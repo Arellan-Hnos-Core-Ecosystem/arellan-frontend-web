@@ -1,4 +1,4 @@
-import { apiClient } from "./api-client"
+import { api } from "@/lib/api"
 import type {
   Part,
   InventoryMovement,
@@ -22,7 +22,7 @@ export interface InventoryValuation {
 export async function getItems(
   filters: InventoryFilters = {},
 ): Promise<PaginatedResponse<Part>> {
-  const { data } = await apiClient.get<PaginatedResponse<Part>>("/inventory", {
+  const { data } = await api.get<PaginatedResponse<Part>>("/inventory", {
     params: filters,
   })
   return data
@@ -33,7 +33,7 @@ export async function getItems(
  * GET /inventory/:id
  */
 export async function getItem(id: string): Promise<Part> {
-  const { data } = await apiClient.get<Part>(`/inventory/${id}`)
+  const { data } = await api.get<Part>(`/inventory/${id}`)
   return data
 }
 
@@ -44,7 +44,7 @@ export async function getItem(id: string): Promise<Part> {
 export async function createItem(
   payload: Record<string, unknown>,
 ): Promise<Part> {
-  const { data } = await apiClient.post<Part>("/inventory", payload)
+  const { data } = await api.post<Part>("/inventory", payload)
   return data
 }
 
@@ -56,7 +56,7 @@ export async function updateItem(
   id: string,
   payload: Record<string, unknown>,
 ): Promise<Part> {
-  const { data } = await apiClient.patch<Part>(`/inventory/${id}`, payload)
+  const { data } = await api.patch<Part>(`/inventory/${id}`, payload)
   return data
 }
 
@@ -71,7 +71,7 @@ export async function addMovement(payload: {
   reason: string
   orderId?: string
 }): Promise<InventoryMovement> {
-  const { data } = await apiClient.post<InventoryMovement>(
+  const { data } = await api.post<InventoryMovement>(
     "/inventory/movements",
     payload,
   )
@@ -83,7 +83,7 @@ export async function addMovement(payload: {
  * GET /inventory/low-stock
  */
 export async function getLowStock(): Promise<Part[]> {
-  const { data } = await apiClient.get<Part[]>("/inventory/low-stock")
+  const { data } = await api.get<Part[]>("/inventory/low-stock")
   return data
 }
 
@@ -92,7 +92,7 @@ export async function getLowStock(): Promise<Part[]> {
  * GET /inventory/valuation
  */
 export async function getValuation(): Promise<InventoryValuation> {
-  const { data } = await apiClient.get<InventoryValuation>(
+  const { data } = await api.get<InventoryValuation>(
     "/inventory/valuation",
   )
   return data
@@ -106,7 +106,7 @@ export async function getMovements(
   itemId?: string,
   filters: { page?: number; pageSize?: number; type?: MovementType } = {},
 ): Promise<PaginatedResponse<InventoryMovement>> {
-  const { data } = await apiClient.get<PaginatedResponse<InventoryMovement>>(
+  const { data } = await api.get<PaginatedResponse<InventoryMovement>>(
     "/inventory/movements",
     { params: { partId: itemId, ...filters } },
   )

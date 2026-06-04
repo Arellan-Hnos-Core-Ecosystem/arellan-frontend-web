@@ -186,6 +186,7 @@ export default function LoginPage() {
                   error={loginForm.formState.errors.email?.message}
                 >
                   <Input
+                    id="email"
                     {...loginForm.register("email")}
                     type="email"
                     placeholder="correo@arellanhnos.com"
@@ -197,6 +198,7 @@ export default function LoginPage() {
                   error={loginForm.formState.errors.password?.message}
                 >
                   <Input
+                    id="contrasena"
                     {...loginForm.register("password")}
                     type="password"
                     placeholder="••••••••"

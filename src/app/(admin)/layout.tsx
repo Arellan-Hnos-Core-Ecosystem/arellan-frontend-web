@@ -10,6 +10,7 @@ import {
 } from "@arellan-hnos-core-ecosystem/ui";
 import { useAuthStore } from "@/stores/auth";
 import { useUIStore } from "@/stores/ui";
+import { useRealtime } from "@/hooks/useRealtime";
 
 interface NavItem {
   href: string;
@@ -85,12 +86,28 @@ export default function AdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { sidebarOpen, toggleSidebar } = useUIStore();
+  const { sidebarOpen, toggleSidebar, addToast } = useUIStore();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // WebSocket real-time updates
+  useRealtime(
+    {
+      "order:status_changed": () => {
+        // React Query handles invalidation on orders pages
+      },
+      "inventory:low_stock": (data: any) => {
+        addToast({ type: "warning", title: "Stock bajo", message: `${data?.itemName}: ${data?.currentStock} unidades`, duration: 8000 });
+      },
+      "alert:security": (data: any) => {
+        addToast({ type: "error", title: "Alerta de seguridad", message: data?.description || "Actividad sospechosa detectada", duration: 0 });
+      },
+    },
+    isAuthenticated && isClient
+  );
 
   useEffect(() => {
     if (isClient && !isAuthenticated) {

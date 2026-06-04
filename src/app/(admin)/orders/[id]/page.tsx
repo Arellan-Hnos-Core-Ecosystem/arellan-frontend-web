@@ -275,10 +275,10 @@ export default function OrderDetailPage() {
                           <td className="py-2">{op.part?.name ?? "N/A"}</td>
                           <td className="py-2">{op.quantity}</td>
                           <td className="py-2">
-                            S/ {op.unitPrice.toFixed(2)}
+                            S/ {Number(op.unitPrice || 0).toFixed(2)}
                           </td>
-                          <td className="py-2 font-medium">
-                            S/ {(op.quantity * op.unitPrice).toFixed(2)}
+                          <td className="py-2 font-semibold">
+                            S/ {Number((op.quantity * Number(op.unitPrice || 0)) || 0).toFixed(2)}
                           </td>
                         </tr>
                       ))}
@@ -411,6 +411,42 @@ export default function OrderDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Payments + Yape alert */}
+          {(() => {
+            const orderAny = order as any;
+            if (!orderAny.payments?.length) return null;
+            return (
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-semibold">Pagos</h2>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {orderAny.payments.filter((p: any) => p.isPersonalYape).length > 0 && (
+                  <Alert variant="error" className="border-red-500 bg-red-50">
+                    <p className="font-bold text-sm">⚠️ Pago en cuenta Yape personal detectado</p>
+                    {orderAny.payments.filter((p: any) => p.isPersonalYape).map((p: any) => (
+                      <p key={p.id} className="text-xs mt-1">
+                        S/ {Number(p.amount).toFixed(2)} recibido en cuenta {p.yapeAccount || "desconocida"}
+                      </p>
+                    ))}
+                    <p className="text-xs mt-2 font-medium">Verificar con el equipo de administración.</p>
+                  </Alert>
+                )}
+                {orderAny.payments.map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between py-1 border-b last:border-0">
+                    <div>
+                      <p className="text-sm font-medium">{p.method}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {p.paidAt ? new Date(p.paidAt).toLocaleDateString("es-PE") : ""}
+                      </p>
+                    </div>
+                    <span className="font-bold text-sm">S/ {Number(p.amount).toFixed(2)}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )})()}
         </div>
       </div>
 
@@ -423,6 +459,7 @@ export default function OrderDetailPage() {
         <div className="space-y-4">
           <FormField label="Nuevo Estado">
             <Select
+              id="nuevo-estado"
               value={selectedStatus}
               onChange={(e) =>
                 setSelectedStatus(e.target.value as OrderStatus)
@@ -438,6 +475,7 @@ export default function OrderDetailPage() {
           </FormField>
           <FormField label="Comentario (opcional)">
             <textarea
+              id="comentario"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               rows={3}
               placeholder="Comentario sobre el cambio de estado..."
@@ -477,6 +515,7 @@ export default function OrderDetailPage() {
       >
         <FormField label="Motivo de cancelacion" className="mt-3">
           <textarea
+            id="motivo-cancelacion"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             rows={3}
             placeholder="Explique el motivo de la cancelacion..."

@@ -137,14 +137,14 @@ export default function InventoryPage() {
       key: "costPrice",
       header: "Costo",
       render: (part: { costPrice: number }) => (
-        <span>S/ {part.costPrice.toFixed(2)}</span>
+        <span>S/ {Number(part.costPrice || 0).toFixed(2)}</span>
       ),
     },
     {
       key: "salePrice",
       header: "Venta",
       render: (part: { salePrice: number }) => (
-        <span className="font-medium">S/ {part.salePrice.toFixed(2)}</span>
+        <span className="font-medium">S/ {Number(part.salePrice || 0).toFixed(2)}</span>
       ),
     },
     {
@@ -255,13 +255,14 @@ export default function InventoryPage() {
               label="Codigo"
               error={form.formState.errors.code?.message}
             >
-              <Input {...form.register("code")} placeholder="REP-001" />
+              <Input id="codigo" {...form.register("code")} placeholder="REP-001" />
             </FormField>
             <FormField
               label="Categoria"
               error={form.formState.errors.category?.message}
             >
               <Input
+                id="categoria"
                 {...form.register("category")}
                 placeholder="Motor, Frenos..."
               />
@@ -272,7 +273,7 @@ export default function InventoryPage() {
             label="Nombre"
             error={form.formState.errors.name?.message}
           >
-            <Input {...form.register("name")} placeholder="Nombre del repuesto" />
+            <Input id="nombre" {...form.register("name")} placeholder="Nombre del repuesto" />
           </FormField>
 
           <div className="grid grid-cols-2 gap-3">
@@ -280,7 +281,7 @@ export default function InventoryPage() {
               label="Marca"
               error={form.formState.errors.brand?.message}
             >
-              <Input {...form.register("brand")} placeholder="Marca (opcional)" />
+              <Input id="marca" {...form.register("brand")} placeholder="Marca (opcional)" />
             </FormField>
           </div>
 
@@ -290,6 +291,7 @@ export default function InventoryPage() {
               error={form.formState.errors.currentStock?.message}
             >
               <Input
+                id="stock-actual"
                 {...form.register("currentStock")}
                 type="number"
                 min="0"
@@ -300,6 +302,7 @@ export default function InventoryPage() {
               error={form.formState.errors.minStock?.message}
             >
               <Input
+                id="stock-minimo"
                 {...form.register("minStock")}
                 type="number"
                 min="0"
@@ -313,6 +316,7 @@ export default function InventoryPage() {
               error={form.formState.errors.costPrice?.message}
             >
               <Input
+                id="precio-costo"
                 {...form.register("costPrice")}
                 type="number"
                 min="0"
@@ -324,6 +328,7 @@ export default function InventoryPage() {
               error={form.formState.errors.salePrice?.message}
             >
               <Input
+                id="precio-venta"
                 {...form.register("salePrice")}
                 type="number"
                 min="0"
@@ -337,6 +342,7 @@ export default function InventoryPage() {
             error={form.formState.errors.description?.message}
           >
             <textarea
+              id="descripcion"
               {...form.register("description")}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               rows={2}

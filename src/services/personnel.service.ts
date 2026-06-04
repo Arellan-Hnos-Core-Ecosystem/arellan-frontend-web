@@ -1,4 +1,4 @@
-import { apiClient } from "./api-client"
+import { api } from "@/lib/api"
 import type { Account, PersonnelFilters, PaginatedResponse } from "@/types"
 
 /** Attendance record */
@@ -44,7 +44,7 @@ export interface VehicleUsage {
 export async function getPersonnel(
   filters: PersonnelFilters = {},
 ): Promise<PaginatedResponse<Account>> {
-  const { data } = await apiClient.get<PaginatedResponse<Account>>(
+  const { data } = await api.get<PaginatedResponse<Account>>(
     "/personnel",
     { params: filters },
   )
@@ -56,7 +56,7 @@ export async function getPersonnel(
  * GET /personnel/:id
  */
 export async function getPersonnelMember(id: string): Promise<Account> {
-  const { data } = await apiClient.get<Account>(`/personnel/${id}`)
+  const { data } = await api.get<Account>(`/personnel/${id}`)
   return data
 }
 
@@ -67,7 +67,7 @@ export async function getPersonnelMember(id: string): Promise<Account> {
 export async function createPersonnel(
   payload: Record<string, unknown>,
 ): Promise<Account> {
-  const { data } = await apiClient.post<Account>("/personnel", payload)
+  const { data } = await api.post<Account>("/personnel", payload)
   return data
 }
 
@@ -79,7 +79,7 @@ export async function updatePersonnel(
   id: string,
   payload: Record<string, unknown>,
 ): Promise<Account> {
-  const { data } = await apiClient.patch<Account>(
+  const { data } = await api.patch<Account>(
     `/personnel/${id}`,
     payload,
   )
@@ -93,7 +93,7 @@ export async function updatePersonnel(
 export async function checkIn(
   personnelId: string,
 ): Promise<AttendanceRecord> {
-  const { data } = await apiClient.post<AttendanceRecord>(
+  const { data } = await api.post<AttendanceRecord>(
     `/personnel/${personnelId}/attendance/check-in`,
   )
   return data
@@ -106,7 +106,7 @@ export async function checkIn(
 export async function checkOut(
   personnelId: string,
 ): Promise<AttendanceRecord> {
-  const { data } = await apiClient.post<AttendanceRecord>(
+  const { data } = await api.post<AttendanceRecord>(
     `/personnel/${personnelId}/attendance/check-out`,
   )
   return data
@@ -117,7 +117,7 @@ export async function checkOut(
  * GET /personnel/attendance/today
  */
 export async function getTodayAttendance(): Promise<AttendanceRecord[]> {
-  const { data } = await apiClient.get<AttendanceRecord[]>(
+  const { data } = await api.get<AttendanceRecord[]>(
     "/personnel/attendance/today",
   )
   return data
@@ -130,7 +130,7 @@ export async function getTodayAttendance(): Promise<AttendanceRecord[]> {
 export async function getPerformance(
   personnelId: string,
 ): Promise<PersonnelPerformance> {
-  const { data } = await apiClient.get<PersonnelPerformance>(
+  const { data } = await api.get<PersonnelPerformance>(
     `/personnel/${personnelId}/performance`,
   )
   return data
@@ -145,7 +145,7 @@ export async function authorizeVehicleUsage(payload: {
   vehicleId: string
   reason: string
 }): Promise<VehicleUsage> {
-  const { data } = await apiClient.post<VehicleUsage>(
+  const { data } = await api.post<VehicleUsage>(
     "/personnel/vehicle-usage/authorize",
     payload,
   )
@@ -157,7 +157,7 @@ export async function authorizeVehicleUsage(payload: {
  * GET /personnel/vehicle-usage/active
  */
 export async function getActiveVehicleUsages(): Promise<VehicleUsage[]> {
-  const { data } = await apiClient.get<VehicleUsage[]>(
+  const { data } = await api.get<VehicleUsage[]>(
     "/personnel/vehicle-usage/active",
   )
   return data

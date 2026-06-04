@@ -1,4 +1,4 @@
-import { apiClient } from "./api-client"
+import { api } from "@/lib/api"
 import type { Vehicle, PaginatedResponse, Order } from "@/types"
 
 /** Basic filters for vehicle listing */
@@ -18,7 +18,7 @@ export interface VehicleFilters {
 export async function getVehicles(
   filters: VehicleFilters = {},
 ): Promise<PaginatedResponse<Vehicle>> {
-  const { data } = await apiClient.get<PaginatedResponse<Vehicle>>(
+  const { data } = await api.get<PaginatedResponse<Vehicle>>(
     "/vehicles",
     { params: filters },
   )
@@ -30,7 +30,7 @@ export async function getVehicles(
  * GET /vehicles/:id
  */
 export async function getVehicle(id: string): Promise<Vehicle> {
-  const { data } = await apiClient.get<Vehicle>(`/vehicles/${id}`)
+  const { data } = await api.get<Vehicle>(`/vehicles/${id}`)
   return data
 }
 
@@ -41,7 +41,7 @@ export async function getVehicle(id: string): Promise<Vehicle> {
 export async function createVehicle(
   payload: Record<string, unknown>,
 ): Promise<Vehicle> {
-  const { data } = await apiClient.post<Vehicle>("/vehicles", payload)
+  const { data } = await api.post<Vehicle>("/vehicles", payload)
   return data
 }
 
@@ -50,7 +50,7 @@ export async function createVehicle(
  * GET /vehicles/:id/history
  */
 export async function getVehicleHistory(id: string): Promise<Order[]> {
-  const { data } = await apiClient.get<Order[]>(`/vehicles/${id}/history`)
+  const { data } = await api.get<Order[]>(`/vehicles/${id}/history`)
   return data
 }
 
@@ -59,6 +59,6 @@ export async function getVehicleHistory(id: string): Promise<Order[]> {
  * GET /vehicles/workshop-fleet
  */
 export async function getWorkshopFleet(): Promise<Vehicle[]> {
-  const { data } = await apiClient.get<Vehicle[]>("/vehicles/workshop-fleet")
+  const { data } = await api.get<Vehicle[]>("/vehicles/workshop-fleet")
   return data
 }

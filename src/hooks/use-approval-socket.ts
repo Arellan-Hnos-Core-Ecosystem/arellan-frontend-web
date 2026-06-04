@@ -48,7 +48,7 @@ export function useApprovalSocket() {
       addToast({
         type: "warning",
         title: "Nueva aprobacion pendiente",
-        message: `Gasto de S/ ${data.amount.toFixed(2)} requiere aprobacion`,
+        message: `Gasto de S/ ${Number(data.amount || 0).toFixed(2)} requiere aprobacion`,
       })
     })
 

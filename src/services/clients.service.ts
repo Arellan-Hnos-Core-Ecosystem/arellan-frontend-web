@@ -1,4 +1,4 @@
-import { apiClient } from "./api-client"
+import { api } from "@/lib/api"
 import type { Client, ClientFilters, PaginatedResponse, Vehicle } from "@/types"
 
 /**
@@ -8,7 +8,7 @@ import type { Client, ClientFilters, PaginatedResponse, Vehicle } from "@/types"
 export async function getClients(
   filters: ClientFilters = {},
 ): Promise<PaginatedResponse<Client>> {
-  const { data } = await apiClient.get<PaginatedResponse<Client>>("/clients", {
+  const { data } = await api.get<PaginatedResponse<Client>>("/clients", {
     params: filters,
   })
   return data
@@ -19,7 +19,7 @@ export async function getClients(
  * GET /clients/:id
  */
 export async function getClient(id: string): Promise<Client> {
-  const { data } = await apiClient.get<Client>(`/clients/${id}`)
+  const { data } = await api.get<Client>(`/clients/${id}`)
   return data
 }
 
@@ -30,7 +30,7 @@ export async function getClient(id: string): Promise<Client> {
 export async function createClient(
   payload: Record<string, unknown>,
 ): Promise<Client> {
-  const { data } = await apiClient.post<Client>("/clients", payload)
+  const { data } = await api.post<Client>("/clients", payload)
   return data
 }
 
@@ -42,7 +42,7 @@ export async function updateClient(
   id: string,
   payload: Record<string, unknown>,
 ): Promise<Client> {
-  const { data } = await apiClient.patch<Client>(`/clients/${id}`, payload)
+  const { data } = await api.patch<Client>(`/clients/${id}`, payload)
   return data
 }
 
@@ -51,7 +51,7 @@ export async function updateClient(
  * GET /clients/:id/vehicles
  */
 export async function getClientVehicles(clientId: string): Promise<Vehicle[]> {
-  const { data } = await apiClient.get<Vehicle[]>(
+  const { data } = await api.get<Vehicle[]>(
     `/clients/${clientId}/vehicles`,
   )
   return data

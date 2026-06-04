@@ -1,4 +1,4 @@
-import { apiClient } from "./api-client"
+import { api } from "@/lib/api"
 import type {
   CashboxSession,
   CashboxTransaction,
@@ -56,7 +56,7 @@ export interface Commission {
  * GET /finance/cashbox/today
  */
 export async function getTodayCashbox(): Promise<CashboxSession | null> {
-  const { data } = await apiClient.get<CashboxSession | null>(
+  const { data } = await api.get<CashboxSession | null>(
     "/finance/cashbox/today",
   )
   return data
@@ -69,7 +69,7 @@ export async function getTodayCashbox(): Promise<CashboxSession | null> {
 export async function openCashbox(payload: {
   initialAmount: number
 }): Promise<CashboxSession> {
-  const { data } = await apiClient.post<CashboxSession>(
+  const { data } = await api.post<CashboxSession>(
     "/finance/cashbox/open",
     payload,
   )
@@ -83,7 +83,7 @@ export async function openCashbox(payload: {
 export async function closeCashbox(payload: {
   finalAmount: number
 }): Promise<CashboxSession> {
-  const { data } = await apiClient.post<CashboxSession>(
+  const { data } = await api.post<CashboxSession>(
     "/finance/cashbox/close",
     payload,
   )
@@ -100,7 +100,7 @@ export async function addTransaction(payload: {
   type: MovementType
   orderId?: string
 }): Promise<CashboxTransaction> {
-  const { data } = await apiClient.post<CashboxTransaction>(
+  const { data } = await api.post<CashboxTransaction>(
     "/finance/cashbox/transaction",
     payload,
   )
@@ -114,7 +114,7 @@ export async function addTransaction(payload: {
 export async function getExpenses(
   filters: FinanceFilters = {},
 ): Promise<PaginatedResponse<Expense>> {
-  const { data } = await apiClient.get<PaginatedResponse<Expense>>(
+  const { data } = await api.get<PaginatedResponse<Expense>>(
     "/finance/expenses",
     { params: filters },
   )
@@ -131,7 +131,7 @@ export async function createExpense(payload: {
   category: string
   orderId?: string
 }): Promise<Expense> {
-  const { data } = await apiClient.post<Expense>("/finance/expenses", payload)
+  const { data } = await api.post<Expense>("/finance/expenses", payload)
   return data
 }
 
@@ -140,7 +140,7 @@ export async function createExpense(payload: {
  * POST /finance/expenses/:id/approve
  */
 export async function approveExpense(id: string): Promise<Expense> {
-  const { data } = await apiClient.post<Expense>(
+  const { data } = await api.post<Expense>(
     `/finance/expenses/${id}/approve`,
   )
   return data
@@ -151,7 +151,7 @@ export async function approveExpense(id: string): Promise<Expense> {
  * GET /finance/dashboard
  */
 export async function getDashboard(): Promise<FinanceDashboard> {
-  const { data } = await apiClient.get<FinanceDashboard>("/finance/dashboard")
+  const { data } = await api.get<FinanceDashboard>("/finance/dashboard")
   return data
 }
 
@@ -162,7 +162,7 @@ export async function getDashboard(): Promise<FinanceDashboard> {
 export async function getCashflow(
   params: { startDate?: string; endDate?: string } = {},
 ): Promise<CashflowEntry[]> {
-  const { data } = await apiClient.get<CashflowEntry[]>("/finance/cashflow", {
+  const { data } = await api.get<CashflowEntry[]>("/finance/cashflow", {
     params,
   })
   return data
@@ -175,7 +175,7 @@ export async function getCashflow(
 export async function getDailyReport(
   payload: DailyReportPayload,
 ): Promise<DailyReport> {
-  const { data } = await apiClient.post<DailyReport>(
+  const { data } = await api.post<DailyReport>(
     "/finance/reports/daily",
     payload,
   )
@@ -187,6 +187,6 @@ export async function getDailyReport(
  * GET /finance/commissions
  */
 export async function getCommissions(): Promise<Commission[]> {
-  const { data } = await apiClient.get<Commission[]>("/finance/commissions")
+  const { data } = await api.get<Commission[]>("/finance/commissions")
   return data
 }

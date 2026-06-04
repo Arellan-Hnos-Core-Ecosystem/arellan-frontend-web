@@ -1,4 +1,4 @@
-import { apiClient } from "./api-client"
+import { api } from "@/lib/api"
 import type {
   Order,
   OrderFilters,
@@ -24,7 +24,7 @@ export interface OrderStats {
 export async function getOrders(
   filters: OrderFilters = {},
 ): Promise<PaginatedResponse<Order>> {
-  const { data } = await apiClient.get<PaginatedResponse<Order>>("/orders", {
+  const { data } = await api.get<PaginatedResponse<Order>>("/orders", {
     params: filters,
   })
   return data
@@ -35,7 +35,7 @@ export async function getOrders(
  * GET /orders/:id
  */
 export async function getOrder(id: string): Promise<Order> {
-  const { data } = await apiClient.get<Order>(`/orders/${id}`)
+  const { data } = await api.get<Order>(`/orders/${id}`)
   return data
 }
 
@@ -46,7 +46,7 @@ export async function getOrder(id: string): Promise<Order> {
 export async function createOrder(
   payload: Record<string, unknown>,
 ): Promise<Order> {
-  const { data } = await apiClient.post<Order>("/orders", payload)
+  const { data } = await api.post<Order>("/orders", payload)
   return data
 }
 
@@ -59,7 +59,7 @@ export async function updateOrderStatus(
   status: OrderStatus,
   comment?: string,
 ): Promise<Order> {
-  const { data } = await apiClient.patch<Order>(`/orders/${id}/status`, {
+  const { data } = await api.patch<Order>(`/orders/${id}/status`, {
     status,
     comment,
   })
@@ -74,7 +74,7 @@ export async function cancelOrder(
   id: string,
   reason: string,
 ): Promise<Order> {
-  const { data } = await apiClient.post<Order>(`/orders/${id}/cancel`, {
+  const { data } = await api.post<Order>(`/orders/${id}/cancel`, {
     reason,
   })
   return data
@@ -88,7 +88,7 @@ export async function addOrderItem(
   orderId: string,
   payload: { partId: string; quantity: number; unitPrice: number },
 ): Promise<OrderPart> {
-  const { data } = await apiClient.post<OrderPart>(
+  const { data } = await api.post<OrderPart>(
     `/orders/${orderId}/items`,
     payload,
   )
@@ -102,7 +102,7 @@ export async function addOrderItem(
 export async function getOrderTimeline(
   orderId: string,
 ): Promise<OrderTimelineEntry[]> {
-  const { data } = await apiClient.get<OrderTimelineEntry[]>(
+  const { data } = await api.get<OrderTimelineEntry[]>(
     `/orders/${orderId}/timeline`,
   )
   return data
@@ -113,7 +113,7 @@ export async function getOrderTimeline(
  * GET /orders/stats/summary
  */
 export async function getDashboardStats(): Promise<OrderStats> {
-  const { data } = await apiClient.get<OrderStats>("/orders/stats/summary")
+  const { data } = await api.get<OrderStats>("/orders/stats/summary")
   return data
 }
 
@@ -125,7 +125,7 @@ export async function assignMechanic(
   orderId: string,
   mechanicId: string,
 ): Promise<Order> {
-  const { data } = await apiClient.post<Order>(`/orders/${orderId}/assign`, {
+  const { data } = await api.post<Order>(`/orders/${orderId}/assign`, {
     mechanicId,
   })
   return data

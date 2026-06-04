@@ -202,10 +202,11 @@ export default function ApprovalsPage() {
         variant="danger"
       >
         <div className="mt-3">
-          <label className="mb-1 block text-sm font-medium">
+          <label htmlFor="reject-reason" className="mb-1 block text-sm font-medium">
             Motivo del rechazo
           </label>
           <textarea
+            id="reject-reason"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             rows={3}
             placeholder="Explique el motivo del rechazo..."

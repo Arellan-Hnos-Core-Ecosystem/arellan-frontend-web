@@ -1,4 +1,4 @@
-import { apiClient } from "./api-client"
+import { api } from "@/lib/api"
 import type { AuditLog, AuditFilters, PaginatedResponse } from "@/types"
 
 /**
@@ -8,7 +8,7 @@ import type { AuditLog, AuditFilters, PaginatedResponse } from "@/types"
 export async function getAuditLogs(
   filters: AuditFilters = {},
 ): Promise<PaginatedResponse<AuditLog>> {
-  const { data } = await apiClient.get<PaginatedResponse<AuditLog>>("/audit", {
+  const { data } = await api.get<PaginatedResponse<AuditLog>>("/audit", {
     params: filters,
   })
   return data
@@ -19,7 +19,7 @@ export async function getAuditLogs(
  * GET /audit/:id
  */
 export async function getAuditLog(id: string): Promise<AuditLog> {
-  const { data } = await apiClient.get<AuditLog>(`/audit/${id}`)
+  const { data } = await api.get<AuditLog>(`/audit/${id}`)
   return data
 }
 
@@ -28,7 +28,7 @@ export async function getAuditLog(id: string): Promise<AuditLog> {
  * GET /audit/user/:userId/activity
  */
 export async function getUserActivity(userId: string): Promise<AuditLog[]> {
-  const { data } = await apiClient.get<AuditLog[]>(
+  const { data } = await api.get<AuditLog[]>(
     `/audit/user/${userId}/activity`,
   )
   return data
