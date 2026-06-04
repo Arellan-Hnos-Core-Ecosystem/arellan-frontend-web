@@ -1,7 +1,7 @@
 import axios from "axios"
 import { useAuthStore } from "@/stores/auth"
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1"
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1"
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -11,6 +11,7 @@ export const apiClient = axios.create({
 
 let isRefreshing = false
 let failedQueue: Array<{ resolve: Function; reject: Function }> = []
+let redirectGuard = false
 
 function processQueue(error: unknown, token: string | null) {
   failedQueue.forEach(({ resolve, reject }) => {
@@ -52,11 +53,19 @@ apiClient.interceptors.response.use(
           processQueue(null, newToken)
           return apiClient(originalRequest)
         }
-        useAuthStore.getState().logout()
         processQueue(new Error("Refresh failed"), null)
+        if (typeof window !== "undefined" && !redirectGuard) {
+          redirectGuard = true
+          useAuthStore.getState().logout()
+          window.location.replace("/login")
+        }
       } catch (refreshError) {
-        useAuthStore.getState().logout()
         processQueue(refreshError, null)
+        if (typeof window !== "undefined" && !redirectGuard) {
+          redirectGuard = true
+          useAuthStore.getState().logout()
+          window.location.replace("/login")
+        }
       } finally {
         isRefreshing = false
       }
@@ -64,7 +73,7 @@ apiClient.interceptors.response.use(
     const message =
       error.response?.data?.message ??
       error.response?.data?.error ??
-      "Error de conexión"
+      "Error de conexion"
     return Promise.reject(new Error(message))
   },
 )

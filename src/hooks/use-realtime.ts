@@ -42,7 +42,7 @@ export function useRealtime() {
 
     setStatus("connecting")
 
-    const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3000"}/ws/orders?token=${accessToken}`
+    const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001"}/ws/orders?token=${accessToken}`
     const socket = new WebSocket(wsUrl)
 
     socket.onopen = () => {

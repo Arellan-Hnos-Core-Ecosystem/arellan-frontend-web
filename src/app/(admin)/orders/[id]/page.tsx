@@ -177,7 +177,7 @@ export default function OrderDetailPage() {
             <CardContent>
               {order.timeline && order.timeline.length > 0 ? (
                 <div className="space-y-0">
-                  {[...order.timeline]
+                  {[...(order.timeline ?? [])]
                     .sort(
                       (a, b) =>
                         new Date(b.createdAt).getTime() -
@@ -267,7 +267,7 @@ export default function OrderDetailPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {order.parts.map((op) => (
+                      {(order.parts ?? []).map((op) => (
                         <tr key={op.id} className="border-b last:border-0">
                           <td className="py-2 font-mono text-xs">
                             {op.part?.code ?? "N/A"}
@@ -297,7 +297,7 @@ export default function OrderDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                  {order.photos.map((photo) => (
+                  {(order.photos ?? []).map((photo) => (
                     <div
                       key={photo.id}
                       className="overflow-hidden rounded-lg border"

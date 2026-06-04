@@ -7,18 +7,20 @@ import {
   Button,
   Spinner,
   Container,
-  Alert,
   Badge,
   CashAmount,
   EmptyState,
   ConfirmDialog,
+  StatusIndicator,
 } from "@arellan-hnos-core-ecosystem/ui";
 import { usePendingExpenses, useApproveExpense } from "@/hooks/use-finance";
+import { useApprovalSocket } from "@/hooks/use-approval-socket";
 import { useState } from "react";
 
 export default function ApprovalsPage() {
   const { data: pendingExpenses, isLoading, error } = usePendingExpenses();
   const approveExpense = useApproveExpense();
+  const { connected } = useApprovalSocket();
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
@@ -40,13 +42,31 @@ export default function ApprovalsPage() {
     setRejectReason("");
   };
 
+  const pendingCount = pendingExpenses?.length ?? 0;
+
   return (
     <Container>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Aprobaciones</h1>
-        <p className="text-sm text-muted-foreground">
-          Gestion de autorizaciones de gastos pendientes
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Aprobaciones</h1>
+          <p className="text-sm text-muted-foreground">
+            Gestion de autorizaciones de gastos pendientes
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {connected ? (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-green-600">
+              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+              En vivo
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-amber-600">
+              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              Actualizando cada 15s
+            </span>
+          )}
+          <Badge variant="brand">{pendingCount} pendiente{pendingCount !== 1 ? "s" : ""}</Badge>
+        </div>
       </div>
 
       {isLoading ? (
@@ -54,9 +74,11 @@ export default function ApprovalsPage() {
           <Spinner size="lg" />
         </div>
       ) : error ? (
-        <Alert variant="error">
-          Error al cargar las aprobaciones: {error.message}
-        </Alert>
+        <Card>
+          <CardContent className="py-8 text-center text-red-500">
+            Error al cargar las aprobaciones
+          </CardContent>
+        </Card>
       ) : pendingExpenses && pendingExpenses.length > 0 ? (
         <div className="space-y-4">
           {pendingExpenses.map((expense) => (
@@ -80,7 +102,6 @@ export default function ApprovalsPage() {
                         </span>
                       </span>
                       <span>
-                        Fecha:{" "}
                         {new Date(expense.createdAt).toLocaleDateString(
                           "es-PE",
                           {
@@ -168,7 +189,6 @@ export default function ApprovalsPage() {
         />
       )}
 
-      {/* Reject confirmation dialog */}
       <ConfirmDialog
         open={rejectId !== null}
         onClose={() => {

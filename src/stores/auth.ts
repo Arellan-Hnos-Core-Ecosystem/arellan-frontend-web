@@ -20,6 +20,23 @@ interface AuthState {
   clearError: () => void;
 }
 
+function sanitizePersisted(raw: Partial<AuthState>) {
+  if (raw.accessToken && raw.isAuthenticated && raw.user) {
+    return {
+      accessToken: raw.accessToken,
+      refreshToken: raw.refreshToken ?? null,
+      user: raw.user,
+      isAuthenticated: true,
+    };
+  }
+  return {
+    accessToken: null as string | null,
+    refreshToken: null as string | null,
+    user: null as Account | null,
+    isAuthenticated: false,
+  };
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -37,10 +54,7 @@ export const useAuthStore = create<AuthState>()(
           const response = await api.post<AuthResponse>("/auth/login", data);
 
           if (response.data.mfaPending) {
-            set({
-              mfaToken: response.data.sessionToken ?? null,
-              isLoading: false,
-            });
+            set({ mfaToken: response.data.sessionToken ?? null, isLoading: false });
             return;
           }
 
@@ -53,8 +67,7 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
         } catch (err: unknown) {
-          const message =
-            err instanceof Error ? err.message : "Error al iniciar sesion";
+          const message = err instanceof Error ? err.message : "Error al iniciar sesion";
           set({ isLoading: false, error: message });
           throw err;
         }
@@ -78,8 +91,7 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
         } catch (err: unknown) {
-          const message =
-            err instanceof Error ? err.message : "Codigo MFA invalido";
+          const message = err instanceof Error ? err.message : "Codigo MFA invalido";
           set({ isLoading: false, error: message });
           throw err;
         }
@@ -103,15 +115,28 @@ export const useAuthStore = create<AuthState>()(
       refreshAccessToken: async () => {
         const currentRefreshToken = get().refreshToken;
         if (!currentRefreshToken) {
-          set({ isAuthenticated: false });
+          set({
+            user: null,
+            accessToken: null,
+            refreshToken: null,
+            mfaToken: null,
+            isAuthenticated: false,
+          });
           return;
         }
 
         try {
-          const response = await api.post<{
+          const axios = (await import("axios")).default;
+          const BASE_URL =
+            process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
+
+          const response = await axios.post<{
             accessToken: string;
             refreshToken: string;
-          }>("/auth/refresh", { refreshToken: currentRefreshToken });
+          }>(`${BASE_URL}/auth/refresh`, { refreshToken: currentRefreshToken }, {
+            headers: { "Content-Type": "application/json" },
+            timeout: 15000,
+          });
 
           set({
             accessToken: response.data.accessToken,
@@ -123,6 +148,7 @@ export const useAuthStore = create<AuthState>()(
             user: null,
             accessToken: null,
             refreshToken: null,
+            mfaToken: null,
             isAuthenticated: false,
           });
         }

@@ -2,13 +2,11 @@ import axios from "axios";
 import { useAuthStore } from "@/stores/auth";
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api/v1";
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
 
 export const api = axios.create({
   baseURL: BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  headers: { "Content-Type": "application/json" },
   timeout: 30000,
 });
 
@@ -17,14 +15,12 @@ let failedQueue: Array<{
   resolve: (token: string) => void;
   reject: (error: unknown) => void;
 }> = [];
+let redirectGuard = false;
 
 function processQueue(error: unknown, token: string | null) {
   failedQueue.forEach(({ resolve, reject }) => {
-    if (error) {
-      reject(error);
-    } else if (token) {
-      resolve(token);
-    }
+    if (error) reject(error);
+    else if (token) resolve(token);
   });
   failedQueue = [];
 }
@@ -32,12 +28,12 @@ function processQueue(error: unknown, token: string | null) {
 api.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().accessToken;
-    if (token) {
+    if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 api.interceptors.response.use(
@@ -50,7 +46,9 @@ api.interceptors.response.use(
         return new Promise((resolve, reject) => {
           failedQueue.push({
             resolve: (token: string) => {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
+              if (originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+              }
               resolve(api(originalRequest));
             },
             reject,
@@ -66,17 +64,27 @@ api.interceptors.response.use(
         const newToken = useAuthStore.getState().accessToken;
 
         if (newToken) {
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          }
           processQueue(null, newToken);
           return api(originalRequest);
         }
 
-        useAuthStore.getState().logout();
-        processQueue(new Error("Refresh failed"), null);
+        processQueue(new Error("Session expired"), null);
+        if (typeof window !== "undefined" && !redirectGuard) {
+          redirectGuard = true;
+          useAuthStore.getState().logout();
+          window.location.replace("/login");
+        }
         return Promise.reject(error);
       } catch (refreshError) {
-        useAuthStore.getState().logout();
         processQueue(refreshError, null);
+        if (typeof window !== "undefined" && !redirectGuard) {
+          redirectGuard = true;
+          useAuthStore.getState().logout();
+          window.location.replace("/login");
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -89,5 +97,5 @@ api.interceptors.response.use(
       "Error de conexion con el servidor";
 
     return Promise.reject(new Error(message));
-  }
+  },
 );
