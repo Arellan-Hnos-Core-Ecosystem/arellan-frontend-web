@@ -27,9 +27,14 @@ export function useOrders(filters: OrderFilters = {}) {
   return useQuery({
     queryKey: ["orders", filters],
     queryFn: async () => {
-      const { data } = await api.get<PaginatedResponse<Order>>("/orders", {
-        params: filters,
-      });
+      const params: Record<string, unknown> = {};
+      if (filters.status) params.status = filters.status;
+      if (filters.search) params.search = filters.search;
+      if (filters.startDate) params.from = filters.startDate;
+      if (filters.endDate) params.to = filters.endDate;
+      if (filters.page != null) params.page = Number(filters.page);
+      if (filters.pageSize != null) params.pageSize = Number(filters.pageSize);
+      const { data } = await api.get<PaginatedResponse<Order>>("/orders", { params });
       return data;
     },
   });
@@ -48,9 +53,9 @@ export function useOrder(id: string | undefined) {
 
 export function useDashboardStats() {
   return useQuery({
-    queryKey: ["dashboard", "stats"],
+    queryKey: ["dashboard", "summary"],
     queryFn: async () => {
-      const { data } = await api.get<DashboardStats>("/dashboard/stats");
+      const { data } = await api.get<DashboardStats>("/dashboard/summary");
       return data;
     },
     refetchInterval: 30000,

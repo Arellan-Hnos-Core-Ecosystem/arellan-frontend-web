@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 import {
   Card,
   CardHeader,
@@ -19,6 +20,7 @@ import {
   FormField,
 } from "@arellan-hnos-core-ecosystem/ui";
 import { useOrder, useUpdateOrderStatus, useCancelOrder } from "@/hooks/use-orders";
+import { api } from "@/lib/api";
 import type { OrderStatus } from "@/types";
 
 const statusLabels: Record<OrderStatus, string> = {
@@ -57,6 +59,34 @@ export default function OrderDetailPage() {
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | "">("");
   const [statusComment, setStatusComment] = useState("");
   const [cancelReason, setCancelReason] = useState("");
+
+  // QR Payment
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrData, setQrData] = useState<any>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrCountdown, setQrCountdown] = useState(0);
+
+  const handleGenerateQR = async () => {
+    if (!order) return;
+    setQrLoading(true);
+    try {
+      const { data } = await api.post("/finance/qr/generate", { workOrderId: order.id });
+      setQrData(data);
+      setQrCountdown(420);
+      setShowQRModal(true);
+    } catch (err: any) {
+      const addToast = (await import("@/stores/ui")).useUIStore.getState().addToast;
+      addToast({ type: "error", title: "Error", message: err.response?.data?.message || err.message });
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (qrCountdown <= 0) return;
+    const timer = setInterval(() => setQrCountdown((c) => c - 1), 1000);
+    return () => clearInterval(timer);
+  }, [qrCountdown]);
 
   if (isLoading) {
     return (
@@ -142,9 +172,14 @@ export default function OrderDetailPage() {
         </div>
 
         {availableTransitions.length > 0 && (
+          <>
           <Button onClick={() => setShowStatusModal(true)}>
             Cambiar Estado
           </Button>
+          <Button variant="outline" onClick={handleGenerateQR} disabled={qrLoading || order.status === "CANCELLED"}>
+            {qrLoading ? <Spinner size="sm" /> : "Generar QR de Cobro"}
+          </Button>
+          </>
         )}
       </div>
 
@@ -524,6 +559,28 @@ export default function OrderDetailPage() {
           />
         </FormField>
       </ConfirmDialog>
+
+      {/* QR Payment Modal */}
+      <Modal open={showQRModal} onClose={() => setShowQRModal(false)} title="Cobro con QR">
+        {qrData && (
+          <div className="space-y-4 text-center">
+            <p className="text-sm text-gray-500">Escanee el QR para pagar</p>
+            <div className="flex justify-center bg-white p-4 rounded-lg">
+              <QRCodeSVG value={qrData.qrToken} size={200} />
+            </div>
+            <p className="text-3xl font-bold">S/ {Number(qrData.amount).toFixed(2)}</p>
+            <p className="text-sm text-gray-400">
+              Orden: {qrData.orderId}
+            </p>
+            <p className={`text-sm font-medium ${qrCountdown < 60 ? "text-red-500" : "text-gray-500"}`}>
+              Expira en {Math.floor(qrCountdown / 60)}:{(qrCountdown % 60).toString().padStart(2, "0")}
+            </p>
+            <Alert variant="warning">
+              Este es el QR oficial del taller. No usar Yape personal.
+            </Alert>
+          </div>
+        )}
+      </Modal>
     </Container>
   );
 }

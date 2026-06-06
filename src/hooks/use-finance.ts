@@ -86,9 +86,14 @@ export function useExpenses(filters: FinanceFilters = {}) {
   return useQuery({
     queryKey: ["finance", "expenses", filters],
     queryFn: async () => {
+      const params: Record<string, unknown> = {};
+      if (filters.startDate) params.startDate = filters.startDate;
+      if (filters.endDate) params.endDate = filters.endDate;
+      if (filters.page != null) params.page = Number(filters.page);
+      if (filters.pageSize != null) params.size = Number(filters.pageSize);
       const { data } = await api.get<PaginatedResponse<Expense>>(
         "/finance/expenses",
-        { params: filters }
+        { params }
       );
       return data;
     },

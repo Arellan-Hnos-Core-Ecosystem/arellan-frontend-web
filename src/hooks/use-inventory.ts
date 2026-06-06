@@ -13,9 +13,13 @@ export function useInventory(filters: InventoryFilters = {}) {
   return useQuery({
     queryKey: ["inventory", filters],
     queryFn: async () => {
-      const { data } = await api.get<PaginatedResponse<Part>>("/inventory", {
-        params: filters,
-      });
+      const params: Record<string, unknown> = {};
+      if (filters.search) params.search = filters.search;
+      if (filters.lowStock != null) params.lowStock = filters.lowStock;
+      if (filters.category) params.category = filters.category;
+      if (filters.page != null) params.page = Number(filters.page);
+      if (filters.pageSize != null) params.pageSize = Number(filters.pageSize);
+      const { data } = await api.get<PaginatedResponse<Part>>("/inventory", { params });
       return data;
     },
   });
@@ -25,7 +29,7 @@ export function useCriticalStock() {
   return useQuery({
     queryKey: ["inventory", "critical"],
     queryFn: async () => {
-      const { data } = await api.get<Part[]>("/inventory/critical");
+      const { data } = await api.get<Part[]>("/inventory/critical/list");
       return data;
     },
     refetchInterval: 60000,

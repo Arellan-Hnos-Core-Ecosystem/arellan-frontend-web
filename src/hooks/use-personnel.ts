@@ -7,10 +7,13 @@ export function usePersonnel(filters: PersonnelFilters = {}) {
   return useQuery({
     queryKey: ["personnel", filters],
     queryFn: async () => {
-      const { data } = await api.get<PaginatedResponse<Account>>(
-        "/personnel",
-        { params: filters }
-      );
+      const params: Record<string, unknown> = {};
+      if (filters.role) params.role = filters.role;
+      if (filters.status) params.status = filters.status;
+      if (filters.search) params.search = filters.search;
+      if (filters.page != null) params.page = Number(filters.page);
+      if (filters.pageSize != null) params.pageSize = Number(filters.pageSize);
+      const { data } = await api.get<PaginatedResponse<Account>>("/personnel", { params });
       return data;
     },
   });

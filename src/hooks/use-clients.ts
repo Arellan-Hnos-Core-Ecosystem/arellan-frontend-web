@@ -7,9 +7,11 @@ export function useClients(filters: ClientFilters = {}) {
   return useQuery({
     queryKey: ["clients", filters],
     queryFn: async () => {
-      const { data } = await api.get<PaginatedResponse<Client>>("/clients", {
-        params: filters,
-      });
+      const params: Record<string, unknown> = {};
+      if (filters.search) params.search = filters.search;
+      if (filters.page != null) params.page = Number(filters.page);
+      if (filters.pageSize != null) params.pageSize = Number(filters.pageSize);
+      const { data } = await api.get<PaginatedResponse<Client>>("/clients", { params });
       return data;
     },
   });
