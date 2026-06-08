@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Account, AuthResponse, LoginRequest, MfaRequest } from "@/types";
-import { api } from "@/lib/api";
+import { api, configureApiAuth } from "@/lib/api";
 
 interface AuthState {
   user: Account | null;
@@ -15,7 +15,6 @@ interface AuthState {
   login: (data: LoginRequest) => Promise<void>;
   verifyMfa: (data: MfaRequest) => Promise<void>;
   logout: () => void;
-  refreshAccessToken: () => Promise<void>;
   setTokens: (accessToken: string, refreshToken: string) => void;
   clearError: () => void;
 }
@@ -112,48 +111,6 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      refreshAccessToken: async () => {
-        const currentRefreshToken = get().refreshToken;
-        if (!currentRefreshToken) {
-          set({
-            user: null,
-            accessToken: null,
-            refreshToken: null,
-            mfaToken: null,
-            isAuthenticated: false,
-          });
-          return;
-        }
-
-        try {
-          const axios = (await import("axios")).default;
-          const BASE_URL =
-            process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
-
-          const response = await axios.post<{
-            accessToken: string;
-            refreshToken: string;
-          }>(`${BASE_URL}/auth/refresh`, { refreshToken: currentRefreshToken }, {
-            headers: { "Content-Type": "application/json" },
-            timeout: 15000,
-          });
-
-          set({
-            accessToken: response.data.accessToken,
-            refreshToken: response.data.refreshToken,
-            isAuthenticated: true,
-          });
-        } catch {
-          set({
-            user: null,
-            accessToken: null,
-            refreshToken: null,
-            mfaToken: null,
-            isAuthenticated: false,
-          });
-        }
-      },
-
       setTokens: (accessToken: string, refreshToken: string) => {
         set({ accessToken, refreshToken, isAuthenticated: true });
       },
@@ -168,6 +125,22 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      merge: (persisted, current) => ({
+        ...current,
+        ...sanitizePersisted(persisted as Partial<AuthState>),
+      }),
     }
   )
 );
+
+// Wire api auth callbacks — uni-directional: auth → api (no cycle)
+configureApiAuth({
+  getAccessToken: () => useAuthStore.getState().accessToken,
+  getRefreshToken: () => useAuthStore.getState().refreshToken,
+  onTokenRefreshed: (access, refresh) => {
+    useAuthStore.getState().setTokens(access, refresh);
+  },
+  onUnauthorized: () => {
+    useAuthStore.getState().logout();
+  },
+});

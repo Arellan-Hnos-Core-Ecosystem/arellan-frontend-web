@@ -7,6 +7,7 @@ const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001"
 
 type RealtimeEvent =
   | "order:created"
+  | "order:updated"
   | "order:status_changed"
   | "inventory:low_stock"
   | "payment:received"

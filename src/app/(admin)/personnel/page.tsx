@@ -25,13 +25,14 @@ const roleLabels: Record<UserRole, string> = {
   ADMIN: "Administrador",
   FINANCE: "Finanzas",
   MECHANIC: "Mecanico",
-  RECEPTIONIST: "Recepcionista",
+  TRAINEE: "Aprendiz",
+  CLIENT: "Cliente",
 };
 
 const statusLabels: Record<AccountStatus, string> = {
   ACTIVE: "Activo",
   INACTIVE: "Inactivo",
-  SUSPENDED: "Suspendido",
+  TERMINATED: "Desvinculado",
 };
 
 const statusVariants: Record<
@@ -40,7 +41,7 @@ const statusVariants: Record<
 > = {
   ACTIVE: "success",
   INACTIVE: "warning",
-  SUSPENDED: "error",
+  TERMINATED: "error",
 };
 
 export default function PersonnelPage() {

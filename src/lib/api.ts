@@ -1,14 +1,31 @@
 import axios from "axios";
-import { useAuthStore } from "@/stores/auth";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
 
 export const api = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
   timeout: 30000,
 });
+
+// Avoid circular dep: auth store calls configureApiAuth after it is created.
+// api.ts never imports from stores/auth.ts.
+let _getAccessToken: () => string | null = () => null;
+let _getRefreshToken: () => string | null = () => null;
+let _onTokenRefreshed: (access: string, refresh: string) => void = () => {};
+let _onUnauthorized: () => void = () => {};
+
+export function configureApiAuth(opts: {
+  getAccessToken: () => string | null;
+  getRefreshToken: () => string | null;
+  onTokenRefreshed: (access: string, refresh: string) => void;
+  onUnauthorized: () => void;
+}): void {
+  _getAccessToken = opts.getAccessToken;
+  _getRefreshToken = opts.getRefreshToken;
+  _onTokenRefreshed = opts.onTokenRefreshed;
+  _onUnauthorized = opts.onUnauthorized;
+}
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -17,7 +34,7 @@ let failedQueue: Array<{
 }> = [];
 let redirectGuard = false;
 
-function processQueue(error: unknown, token: string | null) {
+function processQueue(error: unknown, token: string | null): void {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) reject(error);
     else if (token) resolve(token);
@@ -27,7 +44,7 @@ function processQueue(error: unknown, token: string | null) {
 
 api.interceptors.request.use(
   (config) => {
-    const token = useAuthStore.getState().accessToken;
+    const token = _getAccessToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -60,29 +77,27 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await useAuthStore.getState().refreshAccessToken();
-        const newToken = useAuthStore.getState().accessToken;
+        const refreshToken = _getRefreshToken();
+        if (!refreshToken) throw new Error("No refresh token");
 
-        if (newToken) {
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          }
-          processQueue(null, newToken);
-          return api(originalRequest);
-        }
+        const { data } = await axios.post<{ accessToken: string; refreshToken: string }>(
+          `${BASE_URL}/auth/refresh`,
+          { refreshToken },
+          { timeout: 15000 },
+        );
 
-        processQueue(new Error("Session expired"), null);
-        if (typeof window !== "undefined" && !redirectGuard) {
-          redirectGuard = true;
-          useAuthStore.getState().logout();
-          window.location.replace("/login");
+        _onTokenRefreshed(data.accessToken, data.refreshToken);
+
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
         }
-        return Promise.reject(error);
+        processQueue(null, data.accessToken);
+        return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
         if (typeof window !== "undefined" && !redirectGuard) {
           redirectGuard = true;
-          useAuthStore.getState().logout();
+          _onUnauthorized();
           window.location.replace("/login");
         }
         return Promise.reject(refreshError);

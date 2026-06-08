@@ -162,3 +162,15 @@ export async function getActiveVehicleUsages(): Promise<VehicleUsage[]> {
   )
   return data
 }
+
+/**
+ * Update a personnel member's account status.
+ * PATCH /personnel/:id/status
+ */
+export async function updatePersonnelStatus(
+  id: string,
+  status: "ACTIVE" | "INACTIVE" | "TERMINATED",
+): Promise<Account> {
+  const { data } = await api.patch<Account>(`/personnel/${id}/status`, { status })
+  return data
+}

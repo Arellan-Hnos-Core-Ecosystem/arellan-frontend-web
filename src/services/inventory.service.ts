@@ -99,6 +99,15 @@ export async function getValuation(): Promise<InventoryValuation> {
 }
 
 /**
+ * Fetch items that have reached critical stock (below absolute minimum).
+ * GET /inventory/critical/list
+ */
+export async function getCriticalItems(): Promise<Part[]> {
+  const { data } = await api.get<Part[]>("/inventory/critical/list")
+  return data
+}
+
+/**
  * Fetch movement history for items, optionally filtered.
  * GET /inventory/movements
  */

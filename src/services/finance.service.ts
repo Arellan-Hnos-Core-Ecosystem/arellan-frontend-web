@@ -190,3 +190,28 @@ export async function getCommissions(): Promise<Commission[]> {
   const { data } = await api.get<Commission[]>("/finance/commissions")
   return data
 }
+
+/**
+ * Fetch expenses pending approval.
+ * GET /finance/expenses/pending
+ */
+export async function getPendingExpenses(): Promise<Expense[]> {
+  const { data } = await api.get<Expense[]>("/finance/expenses/pending")
+  return data
+}
+
+/**
+ * Update expense status (approve or reject).
+ * PATCH /finance/expenses/:id/status
+ */
+export async function updateExpenseStatus(
+  id: string,
+  status: "APPROVED" | "REJECTED",
+  rejectedReason?: string,
+): Promise<Expense> {
+  const { data } = await api.patch<Expense>(`/finance/expenses/${id}/status`, {
+    status,
+    rejectedReason,
+  })
+  return data
+}

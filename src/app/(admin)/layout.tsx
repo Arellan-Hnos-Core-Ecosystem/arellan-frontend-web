@@ -11,6 +11,7 @@ import {
 import { useAuthStore } from "@/stores/auth";
 import { useUIStore } from "@/stores/ui";
 import { useRealtime } from "@/hooks/useRealtime";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface NavItem {
   href: string;
@@ -87,6 +88,7 @@ export default function AdminLayout({
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuthStore();
   const { sidebarOpen, toggleSidebar, addToast } = useUIStore();
+  const queryClient = useQueryClient();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -96,10 +98,18 @@ export default function AdminLayout({
   // WebSocket real-time updates
   useRealtime(
     {
-      "order:status_changed": () => {
-        // React Query handles invalidation on orders pages
+      "order:status_changed": (data: { orderId?: string }) => {
+        queryClient.invalidateQueries({ queryKey: ["orders"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        if (data?.orderId) queryClient.invalidateQueries({ queryKey: ["orders", data.orderId] });
+      },
+      "order:created": () => {
+        queryClient.invalidateQueries({ queryKey: ["orders"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       },
       "inventory:low_stock": (data: any) => {
+        queryClient.invalidateQueries({ queryKey: ["inventory"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
         addToast({ type: "warning", title: "Stock bajo", message: `${data?.itemName}: ${data?.currentStock} unidades`, duration: 8000 });
       },
       "alert:security": (data: any) => {

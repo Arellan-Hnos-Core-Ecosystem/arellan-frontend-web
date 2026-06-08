@@ -1,33 +1,17 @@
 "use client"
 
 import { useEffect, useRef, useState, useCallback } from "react"
+import { io, type Socket } from "socket.io-client"
 import { useQueryClient } from "@tanstack/react-query"
 import { useAuthStore } from "@/stores/auth"
 import { useUIStore } from "@/stores/ui"
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected" | "error"
 
-interface OrderUpdateEvent {
-  orderId: string
-  orderNumber: string
-  newStatus: string
-  vehiclePlate: string
-  mechanicName?: string
-  changedBy: string
-  changedById: string
-  timestamp: string
-}
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001"
 
-/**
- * WebSocket hook that connects to the orders real-time feed.
- *
- * - Connects to ws://localhost:3000/ws/orders (or NEXT_PUBLIC_WS_URL)
- * - Handles "order:updated" events by invalidating the React Query cache
- * - Provides connection status (`connecting` | `connected` | `disconnected` | `error`)
- */
 export function useRealtime() {
-  const wsRef = useRef<WebSocket | null>(null)
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const socketRef = useRef<Socket | null>(null)
   const [status, setStatus] = useState<ConnectionStatus>("disconnected")
   const queryClient = useQueryClient()
   const accessToken = useAuthStore((s) => s.accessToken)
@@ -35,75 +19,109 @@ export function useRealtime() {
 
   const connect = useCallback(() => {
     if (!accessToken) return
-    if (wsRef.current?.readyState === WebSocket.OPEN) return
-
-    // Avoid duplicate connection attempts
-    if (wsRef.current && wsRef.current.readyState === WebSocket.CONNECTING) return
+    if (socketRef.current?.connected) return
 
     setStatus("connecting")
 
-    const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001"}/ws/orders?token=${accessToken}`
-    const socket = new WebSocket(wsUrl)
+    const socket = io(WS_URL, {
+      auth: { token: accessToken },
+      transports: ["websocket"],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 3000,
+    })
 
-    socket.onopen = () => {
+    socket.on("connect", () => {
       setStatus("connected")
-    }
+    })
 
-    socket.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data)
-
-        if (payload.type === "order:updated") {
-          const evt = payload.data as OrderUpdateEvent
-
-          // Invalidate relevant React Query caches
-          queryClient.invalidateQueries({ queryKey: ["orders"] })
-          queryClient.invalidateQueries({ queryKey: ["dashboard"] })
-          if (evt.orderId) {
-            queryClient.invalidateQueries({ queryKey: ["orders", evt.orderId] })
-          }
-
-          addToast({
-            type: "info",
-            title: `OT #${evt.orderNumber} actualizada`,
-            message: `${evt.vehiclePlate}: ${evt.newStatus} por ${evt.changedBy}`,
-          })
-        }
-      } catch {
-        // Ignore non-JSON or malformed messages
-      }
-    }
-
-    socket.onclose = () => {
+    socket.on("disconnect", () => {
       setStatus("disconnected")
-      // Auto-reconnect after 3 seconds
-      reconnectTimeoutRef.current = setTimeout(() => {
-        connect()
-      }, 3000)
-    }
+    })
 
-    socket.onerror = () => {
+    socket.on("connect_error", () => {
       setStatus("error")
-    }
+    })
 
-    wsRef.current = socket
+    socket.on("order:updated", (data: {
+      orderId: string
+      orderNumber: string
+      newStatus: string
+      vehiclePlate: string
+      mechanicName?: string
+      changedBy: string
+      timestamp: string
+    }) => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      if (data.orderId) {
+        queryClient.invalidateQueries({ queryKey: ["orders", data.orderId] })
+      }
+      addToast({
+        type: "info",
+        title: `OT #${data.orderNumber} actualizada`,
+        message: `${data.vehiclePlate}: ${data.newStatus} por ${data.changedBy}`,
+      })
+    })
+
+    socket.on("order:status_changed", (data: {
+      orderId: string
+      oldStatus: string
+      newStatus: string
+      updatedBy: string
+    }) => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      if (data.orderId) {
+        queryClient.invalidateQueries({ queryKey: ["orders", data.orderId] })
+      }
+    })
+
+    socket.on("anomaly:detected", (data: {
+      type: string
+      description: string
+      severity: string
+      sessionId?: string
+      userId?: string
+    }) => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      queryClient.invalidateQueries({ queryKey: ["finance"] })
+      addToast({
+        type: "error",
+        title: `Anomalia: ${data.type}`,
+        message: data.description,
+        duration: 10000,
+      })
+    })
+
+    socket.on("inventory:low_stock", (data: {
+      itemId: string
+      itemName: string
+      currentStock: number
+      minStock: number
+    }) => {
+      queryClient.invalidateQueries({ queryKey: ["inventory"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      addToast({
+        type: "warning",
+        title: "Stock critico",
+        message: `${data.itemName}: ${data.currentStock}/${data.minStock} unidades`,
+      })
+    })
+
+    socketRef.current = socket
   }, [accessToken, queryClient, addToast])
 
   const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-    }
-    wsRef.current?.close()
-    wsRef.current = null
+    socketRef.current?.removeAllListeners()
+    socketRef.current?.disconnect()
+    socketRef.current = null
     setStatus("disconnected")
   }, [])
 
   useEffect(() => {
     connect()
-    return () => {
-      disconnect()
-    }
+    return () => { disconnect() }
   }, [connect, disconnect])
 
   return {

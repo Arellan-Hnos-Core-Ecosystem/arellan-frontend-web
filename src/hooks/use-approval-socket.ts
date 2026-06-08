@@ -80,6 +80,27 @@ export function useApprovalSocket() {
       })
     })
 
+    socket.on("anomaly:detected", (_data: {
+      type: string
+      description: string
+      severity: string
+      sessionId?: string
+      userId?: string
+    }) => {
+      queryClient.invalidateQueries({ queryKey: ["finance"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+    })
+
+    socket.on("inventory:low_stock", (_data: {
+      itemId: string
+      itemName: string
+      currentStock: number
+      minStock: number
+    }) => {
+      queryClient.invalidateQueries({ queryKey: ["inventory"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+    })
+
     socketRef.current = socket
   }, [accessToken, queryClient, addToast])
 

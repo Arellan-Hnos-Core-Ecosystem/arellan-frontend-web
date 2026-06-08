@@ -1,6 +1,6 @@
-export type UserRole = "OWNER" | "ADMIN" | "FINANCE" | "MECHANIC" | "RECEPTIONIST";
+export type UserRole = "OWNER" | "ADMIN" | "FINANCE" | "MECHANIC" | "TRAINEE" | "CLIENT";
 
-export type AccountStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
+export type AccountStatus = "ACTIVE" | "INACTIVE" | "TERMINATED";
 
 export type OrderStatus =
   | "RECEIVED"
@@ -12,11 +12,11 @@ export type OrderStatus =
   | "DELIVERED"
   | "CANCELLED";
 
-export type PaymentMethod = "CASH" | "CARD" | "TRANSFER" | "OTHER";
+export type PaymentMethod = "CASH" | "YAPE" | "PLIN" | "TRANSFER" | "CARD";
 
 export type MovementType = "IN" | "OUT";
 
-export type ExpenseStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type ExpenseStatus = "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "DISBURSED";
 
 export type CashboxStatus = "OPEN" | "CLOSED";
 

@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
 import { useUIStore } from "@/stores/ui";
+import {
+  getItems,
+  getCriticalItems,
+  getItem,
+  addMovement,
+  createItem,
+} from "@/services/inventory.service";
 import type {
   Part,
   InventoryMovement,
@@ -12,26 +18,14 @@ import type {
 export function useInventory(filters: InventoryFilters = {}) {
   return useQuery({
     queryKey: ["inventory", filters],
-    queryFn: async () => {
-      const params: Record<string, unknown> = {};
-      if (filters.search) params.search = filters.search;
-      if (filters.lowStock != null) params.lowStock = filters.lowStock;
-      if (filters.category) params.category = filters.category;
-      if (filters.page != null) params.page = Number(filters.page);
-      if (filters.pageSize != null) params.pageSize = Number(filters.pageSize);
-      const { data } = await api.get<PaginatedResponse<Part>>("/inventory", { params });
-      return data;
-    },
+    queryFn: () => getItems(filters),
   });
 }
 
 export function useCriticalStock() {
   return useQuery({
     queryKey: ["inventory", "critical"],
-    queryFn: async () => {
-      const { data } = await api.get<Part[]>("/inventory/critical/list");
-      return data;
-    },
+    queryFn: getCriticalItems,
     refetchInterval: 60000,
   });
 }
@@ -39,10 +33,7 @@ export function useCriticalStock() {
 export function usePart(id: string | undefined) {
   return useQuery({
     queryKey: ["inventory", id],
-    queryFn: async () => {
-      const { data } = await api.get<Part>(`/inventory/${id}`);
-      return data;
-    },
+    queryFn: () => getItem(id!),
     enabled: Boolean(id),
   });
 }
@@ -52,34 +43,15 @@ export function useAddMovement() {
   const addToast = useUIStore((s) => s.addToast);
 
   return useMutation({
-    mutationFn: async (payload: {
-      partId: string;
-      type: MovementType;
-      quantity: number;
-      reason: string;
-      orderId?: string;
-    }) => {
-      const { data } = await api.post<InventoryMovement>(
-        "/inventory/movements",
-        payload
-      );
-      return data;
-    },
+    mutationFn: (payload: { partId: string; type: MovementType; quantity: number; reason: string; orderId?: string }) =>
+      addMovement(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      addToast({
-        type: "success",
-        title: "Movimiento registrado",
-        message: "El movimiento de inventario se ha registrado exitosamente",
-      });
+      addToast({ type: "success", title: "Movimiento registrado", message: "El movimiento de inventario se ha registrado exitosamente" });
     },
     onError: (error: Error) => {
-      addToast({
-        type: "error",
-        title: "Error",
-        message: error.message,
-      });
+      addToast({ type: "error", title: "Error", message: error.message });
     },
   });
 }
@@ -89,26 +61,14 @@ export function useCreatePart() {
   const addToast = useUIStore((s) => s.addToast);
 
   return useMutation({
-    mutationFn: async (
-      payload: Omit<Part, "id" | "createdAt" | "updatedAt">
-    ) => {
-      const { data } = await api.post<Part>("/inventory", payload);
-      return data;
-    },
+    mutationFn: (payload: Omit<Part, "id" | "createdAt" | "updatedAt">) =>
+      createItem(payload as Record<string, unknown>),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      addToast({
-        type: "success",
-        title: "Repuesto creado",
-        message: "El repuesto se ha creado exitosamente",
-      });
+      addToast({ type: "success", title: "Repuesto creado", message: "El repuesto se ha creado exitosamente" });
     },
     onError: (error: Error) => {
-      addToast({
-        type: "error",
-        title: "Error",
-        message: error.message,
-      });
+      addToast({ type: "error", title: "Error", message: error.message });
     },
   });
 }
