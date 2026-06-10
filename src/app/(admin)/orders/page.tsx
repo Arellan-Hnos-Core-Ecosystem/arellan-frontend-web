@@ -17,8 +17,9 @@ import {
   Select,
   Pagination,
   OrderStatusBadge,
+  Tabs,
 } from "@arellan-hnos-core-ecosystem/ui";
-import { useOrders } from "@/hooks/use-orders";
+import { useOrders, useUpdateOrderStatus } from "@/hooks/use-orders";
 import type { OrderFilters, OrderStatus } from "@/types";
 
 const statusOptions: { value: OrderStatus | "ALL"; label: string }[] = [
@@ -42,6 +43,7 @@ export default function OrdersPage() {
   const [search, setSearch] = useState("");
 
   const { data, isLoading, error } = useOrders(filters);
+  const updateStatus = useUpdateOrderStatus();
 
   const handleSearch = () => {
     setFilters((prev) => ({ ...prev, search: search || undefined, page: 1 }));
@@ -53,6 +55,18 @@ export default function OrdersPage() {
       status: value === "ALL" ? undefined : (value as OrderStatus),
       page: 1,
     }));
+  };
+
+  const handleTabChange = (tab: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      status: tab === "qa" ? "IN_REVIEW" : undefined,
+      page: 1,
+    }));
+  };
+
+  const handleApproveQa = (orderId: string) => {
+    updateStatus.mutate({ id: orderId, status: "READY" });
   };
 
   const columns = [
@@ -95,17 +109,32 @@ export default function OrdersPage() {
     {
       key: "actions",
       header: "",
-      render: (order: { id: string }) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            router.push(`/orders/${order.id}`);
-          }}
-        >
-          Ver detalle
-        </Button>
+      render: (order: { id: string; status: OrderStatus }) => (
+        <div className="flex items-center justify-end gap-2">
+          {order.status === "IN_REVIEW" && (
+            <Button
+              size="sm"
+              data-testid={`approve-qa-${order.id}`}
+              disabled={updateStatus.isPending}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleApproveQa(order.id);
+              }}
+            >
+              Aprobar Control de Calidad
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/orders/${order.id}`);
+            }}
+          >
+            Ver detalle
+          </Button>
+        </div>
       ),
     },
   ];
@@ -125,6 +154,13 @@ export default function OrdersPage() {
           + Nueva Orden
         </Button>
       </div>
+
+      <Tabs defaultValue="all" onChange={handleTabChange} className="mb-6">
+        <Tabs.List>
+          <Tabs.Trigger value="all">Todas las Ordenes</Tabs.Trigger>
+          <Tabs.Trigger value="qa">Pendientes de QA</Tabs.Trigger>
+        </Tabs.List>
+      </Tabs>
 
       {/* Filters */}
       <Card className="mb-6">

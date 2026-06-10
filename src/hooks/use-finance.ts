@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUIStore } from "@/stores/ui";
+import { api } from "@/lib/api";
 import {
   getTodayCashbox,
   openCashbox,
@@ -46,7 +47,7 @@ export function useCloseCashbox() {
   const addToast = useUIStore((s) => s.addToast);
 
   return useMutation({
-    mutationFn: (payload: { finalAmount: number }) => closeCashbox(payload),
+    mutationFn: (payload: { finalAmount: number; justificationText?: string }) => closeCashbox(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["finance", "cashbox"] });
       addToast({ type: "success", title: "Caja cerrada", message: "La caja se ha cerrado exitosamente" });
@@ -94,6 +95,26 @@ export function useApproveExpense() {
         title: variables.status === "APPROVED" ? "Gasto aprobado" : "Gasto rechazado",
         message: variables.status === "APPROVED" ? "El gasto ha sido aprobado" : "El gasto ha sido rechazado",
       });
+    },
+    onError: (error: Error) => {
+      addToast({ type: "error", title: "Error", message: error.message });
+    },
+  });
+}
+
+export function useGeneratePaymentQR() {
+  const addToast = useUIStore((s) => s.addToast);
+
+  return useMutation({
+    mutationFn: async (workOrderId: string) => {
+      const { data } = await api.post<{
+        qrToken: string;
+        amount: number;
+        orderId: string;
+        expiresAt: string;
+        message: string;
+      }>("/finance/qr/generate", { workOrderId });
+      return data;
     },
     onError: (error: Error) => {
       addToast({ type: "error", title: "Error", message: error.message });

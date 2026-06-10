@@ -9,6 +9,7 @@ import {
   CardContent,
   CardFooter,
   Button,
+  Input,
   Spinner,
   Container,
   Alert,
@@ -19,9 +20,15 @@ import {
   Select,
   FormField,
 } from "@arellan-hnos-core-ecosystem/ui";
-import { useOrder, useUpdateOrderStatus, useCancelOrder } from "@/hooks/use-orders";
+import { useOrder, useUpdateOrderStatus, useCancelOrder, useSendQuote } from "@/hooks/use-orders";
 import { api } from "@/lib/api";
+import { z } from "zod";
 import type { OrderStatus } from "@/types";
+
+const quoteFormSchema = z.object({
+  laborCost: z.number({ invalid_type_error: "Ingrese un monto válido" }).positive("La mano de obra debe ser mayor a cero"),
+  partsCost: z.number({ invalid_type_error: "Ingrese un monto válido" }).min(0, "Los repuestos no pueden ser negativos"),
+}).refine((d) => d.laborCost + d.partsCost > 0, { message: "La suma de costos debe ser mayor a cero" });
 
 const statusLabels: Record<OrderStatus, string> = {
   RECEIVED: "Recibido",
@@ -53,6 +60,11 @@ export default function OrderDetailPage() {
   const { data: order, isLoading, error } = useOrder(id);
   const updateStatus = useUpdateOrderStatus();
   const cancelOrder = useCancelOrder();
+  const sendQuote = useSendQuote();
+
+  const [quoteLaborCost, setQuoteLaborCost] = useState("");
+  const [quotePartsCost, setQuotePartsCost] = useState("");
+  const [quoteErrors, setQuoteErrors] = useState<Record<string, string>>({});
 
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -114,6 +126,23 @@ export default function OrderDetailPage() {
   }
 
   const availableTransitions = statusTransitions[order.status] ?? [];
+
+  const handleSendQuote = async () => {
+    const parsed = quoteFormSchema.safeParse({
+      laborCost: parseFloat(quoteLaborCost) || 0,
+      partsCost: parseFloat(quotePartsCost) || 0,
+    });
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      parsed.error.errors.forEach((e) => { if (e.path[0]) fieldErrors[String(e.path[0])] = e.message; });
+      setQuoteErrors(fieldErrors);
+      return;
+    }
+    setQuoteErrors({});
+    await sendQuote.mutateAsync({ orderId: order.id, laborCost: parsed.data.laborCost, partsCost: parsed.data.partsCost });
+  };
+
+  const orderAny = order as any;
 
   const handleStatusChange = async () => {
     if (!selectedStatus) return;
@@ -203,6 +232,76 @@ export default function OrderDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Quote — visible when BUDGETED */}
+          {order.status === "BUDGETED" && (
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-semibold">
+                  Cotización al Cliente
+                  {orderAny.quote && (
+                    <Badge
+                      variant={orderAny.quote.status === "SENT" ? "warning" : orderAny.quote.status === "APPROVED" ? "success" : "neutral"}
+                      className="ml-2 text-xs"
+                    >
+                      {orderAny.quote.status}
+                    </Badge>
+                  )}
+                </h2>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {orderAny.quote?.status === "SENT" ? (
+                  <Alert variant="info">
+                    Cotización <strong>{orderAny.quote.number}</strong> enviada al cliente. Total: <strong>S/ {Number(orderAny.quote.total).toFixed(2)}</strong>.
+                    Válida hasta {new Date(orderAny.quote.validUntil).toLocaleDateString("es-PE")}.
+                  </Alert>
+                ) : orderAny.quote?.status === "APPROVED" ? (
+                  <Alert variant="success">
+                    Cotización aprobada por el cliente. OT en progreso.
+                  </Alert>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Ingrese los costos finales del diagnóstico. Los repuestos importados incluirán automáticamente el costo de aduanas.
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField label="Mano de obra (S/)" error={quoteErrors.laborCost}>
+                        <Input
+                          id="labor-cost"
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={quoteLaborCost}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuoteLaborCost(e.target.value)}
+                        />
+                      </FormField>
+                      <FormField label="Repuestos (S/)" error={quoteErrors.partsCost}>
+                        <Input
+                          id="parts-cost"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={quotePartsCost}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuotePartsCost(e.target.value)}
+                        />
+                      </FormField>
+                    </div>
+                    {quoteErrors[""] && <p className="text-xs text-destructive">{quoteErrors[""]}</p>}
+                    <Button
+                      onClick={handleSendQuote}
+                      disabled={sendQuote.isPending || !quoteLaborCost}
+                      className="w-full"
+                    >
+                      {sendQuote.isPending ? <Spinner className="mr-2 h-4 w-4" /> : null}
+                      Enviar Cotización al Cliente
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Status timeline */}
           <Card>
@@ -449,7 +548,6 @@ export default function OrderDetailPage() {
 
           {/* Payments + Yape alert */}
           {(() => {
-            const orderAny = order as any;
             if (!orderAny.payments?.length) return null;
             return (
             <Card>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { z } from "zod";
 import {
   Card,
   CardHeader,
@@ -24,9 +25,20 @@ import {
   useCloseCashbox,
   useExpenses,
   usePendingExpenses,
+  useGeneratePaymentQR,
 } from "@/hooks/use-finance";
 import { api } from "@/lib/api";
 import { useUIStore } from "@/stores/ui";
+
+const QR_TTL_SECONDS = 7 * 60;
+
+const closeCashboxSchema = z.object({
+  actualCash: z.number({ invalid_type_error: "Ingrese un monto válido" }).min(0),
+  justificationText: z.string().optional(),
+}).superRefine((data, ctx) => {
+  // NOTE: discrepancy check is done in component after computing diff
+  void ctx;
+});
 
 export default function FinancePage() {
   const router = useRouter();
@@ -34,6 +46,8 @@ export default function FinancePage() {
   const { data: pendingExpenses } = usePendingExpenses();
   const openCashbox = useOpenCashbox();
   const closeCashbox = useCloseCashbox();
+  const generateQR = useGeneratePaymentQR();
+  const addToast = useUIStore((s) => s.addToast);
   const [expensePage, setExpensePage] = useState(1);
   const { data: expenses } = useExpenses({
     page: expensePage,
@@ -45,6 +59,36 @@ export default function FinancePage() {
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [initialAmount, setInitialAmount] = useState("");
   const [finalAmount, setFinalAmount] = useState("");
+  const [justificationText, setJustificationText] = useState("");
+  const [closeFormError, setCloseFormError] = useState<string | null>(null);
+
+  // QR modal state
+  const [qrData, setQrData] = useState<{
+    qrToken: string; amount: number; orderId: string; expiresAt: string;
+  } | null>(null);
+  const [qrSecondsLeft, setQrSecondsLeft] = useState(QR_TTL_SECONDS);
+  const qrTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startQrCountdown = useCallback((expiresAt: string) => {
+    if (qrTimerRef.current) clearInterval(qrTimerRef.current);
+    const tick = () => {
+      const diff = Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000);
+      if (diff <= 0) {
+        setQrData(null);
+        setQrSecondsLeft(0);
+        if (qrTimerRef.current) clearInterval(qrTimerRef.current);
+        addToast({ type: "warning", title: "QR expirado", message: "El código QR ha expirado. Genere uno nuevo." });
+      } else {
+        setQrSecondsLeft(diff);
+      }
+    };
+    tick();
+    qrTimerRef.current = setInterval(tick, 1000);
+  }, [addToast]);
+
+  useEffect(() => {
+    return () => { if (qrTimerRef.current) clearInterval(qrTimerRef.current); };
+  }, []);
 
   // Comisiones
   const [commissions, setCommissions] = useState<any[]>([]);
@@ -90,9 +134,39 @@ export default function FinancePage() {
   const handleCloseCashbox = async () => {
     const amount = parseFloat(finalAmount);
     if (isNaN(amount) || amount < 0) return;
-    await closeCashbox.mutateAsync({ finalAmount: amount });
+
+    // Compute expected to check if justification is required
+    const session = (cashbox as any)?.session;
+    if (session) {
+      const paymentSum = (session.transactions ?? [])
+        .filter((t: any) => t.type === "PAYMENT")
+        .reduce((s: number, t: any) => s + Number(t.amount), 0);
+      const expenseSum = (session.transactions ?? [])
+        .filter((t: any) => t.type === "EXPENSE")
+        .reduce((s: number, t: any) => s + Number(t.amount), 0);
+      const expected = Number(session.openingBalance) + paymentSum - expenseSum;
+      const absDiff = Math.abs(amount - expected);
+
+      if (absDiff >= 5 && !justificationText.trim()) {
+        setCloseFormError(
+          `Descuadre de S/ ${absDiff.toFixed(2)} requiere justificación obligatoria.`,
+        );
+        return;
+      }
+    }
+
+    setCloseFormError(null);
+    await closeCashbox.mutateAsync({ finalAmount: amount, justificationText: justificationText.trim() || undefined });
     setShowCloseModal(false);
     setFinalAmount("");
+    setJustificationText("");
+  };
+
+  const handleGenerateQR = async (workOrderId: string) => {
+    const data = await generateQR.mutateAsync(workOrderId);
+    setQrData(data);
+    setQrSecondsLeft(QR_TTL_SECONDS);
+    startQrCountdown(data.expiresAt);
   };
 
   if (isLoading) {
@@ -471,28 +545,79 @@ export default function FinancePage() {
       {/* Close cashbox modal */}
       <Modal
         open={showCloseModal}
-        onClose={() => setShowCloseModal(false)}
+        onClose={() => { setShowCloseModal(false); setCloseFormError(null); setJustificationText(""); }}
         title="Cerrar Caja"
       >
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Ingrese el monto final contado en caja para verificar el cuadre.
+            Ingrese el monto físico contado en caja para verificar el cuadre diario.
           </p>
           <FormField label="Monto Final Contado (S/)">
             <Input
               type="number"
               placeholder="0.00"
               value={finalAmount}
-              onChange={(e) => setFinalAmount(e.target.value)}
+              onChange={(e) => { setFinalAmount(e.target.value); setCloseFormError(null); }}
               min="0"
               step="0.01"
             />
           </FormField>
+
+          {/* Live discrepancy preview */}
+          {finalAmount && (() => {
+            const session = (cashbox as any)?.session;
+            if (!session) return null;
+            const paymentSum = (session.transactions ?? [])
+              .filter((t: any) => t.type === "PAYMENT")
+              .reduce((s: number, t: any) => s + Number(t.amount), 0);
+            const expenseSum = (session.transactions ?? [])
+              .filter((t: any) => t.type === "EXPENSE")
+              .reduce((s: number, t: any) => s + Number(t.amount), 0);
+            const expected = Number(session.openingBalance) + paymentSum - expenseSum;
+            const diff = parseFloat(finalAmount) - expected;
+            const absDiff = Math.abs(diff);
+            if (isNaN(diff)) return null;
+            return (
+              <div className={`rounded-md p-3 text-sm ${absDiff < 5 ? "bg-green-50 text-green-700" : absDiff <= 50 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
+                <span className="font-medium">Descuadre: S/ {diff >= 0 ? "+" : ""}{diff.toFixed(2)}</span>
+                {absDiff < 5 && <span className="ml-2">✓ Cierre automático</span>}
+                {absDiff >= 5 && absDiff <= 50 && <span className="ml-2">Requiere justificación</span>}
+                {absDiff > 50 && <span className="ml-2 font-bold">BLOQUEADO — Se notificará al OWNER</span>}
+              </div>
+            );
+          })()}
+
+          {/* Conditional justification field */}
+          {finalAmount && (() => {
+            const session = (cashbox as any)?.session;
+            if (!session) return null;
+            const paymentSum = (session.transactions ?? [])
+              .filter((t: any) => t.type === "PAYMENT")
+              .reduce((s: number, t: any) => s + Number(t.amount), 0);
+            const expenseSum = (session.transactions ?? [])
+              .filter((t: any) => t.type === "EXPENSE")
+              .reduce((s: number, t: any) => s + Number(t.amount), 0);
+            const expected = Number(session.openingBalance) + paymentSum - expenseSum;
+            const absDiff = Math.abs(parseFloat(finalAmount) - expected);
+            if (isNaN(absDiff) || absDiff < 5) return null;
+            return (
+              <FormField label="Justificación del descuadre *" error={closeFormError ?? undefined}>
+                <textarea
+                  className="w-full rounded-md border border-gray-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 min-h-[80px]"
+                  placeholder="Describa el motivo del descuadre de caja..."
+                  value={justificationText}
+                  onChange={(e) => { setJustificationText(e.target.value); setCloseFormError(null); }}
+                />
+              </FormField>
+            );
+          })()}
+
+          {closeFormError && !justificationText && (
+            <Alert variant="error">{closeFormError}</Alert>
+          )}
+
           <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setShowCloseModal(false)}
-            >
+            <Button variant="outline" onClick={() => { setShowCloseModal(false); setCloseFormError(null); setJustificationText(""); }}>
               Cancelar
             </Button>
             <Button
@@ -500,14 +625,48 @@ export default function FinancePage() {
               onClick={handleCloseCashbox}
               disabled={closeCashbox.isPending || !finalAmount}
             >
-              {closeCashbox.isPending ? (
-                <Spinner className="mr-2 h-4 w-4" />
-              ) : null}
+              {closeCashbox.isPending ? <Spinner className="mr-2 h-4 w-4" /> : null}
               Cerrar Caja
             </Button>
           </div>
         </div>
       </Modal>
+
+      {/* QR Payment modal */}
+      {qrData && (
+        <Modal
+          open={!!qrData}
+          onClose={() => { setQrData(null); if (qrTimerRef.current) clearInterval(qrTimerRef.current); }}
+          title={`Cobro QR — OT #${qrData.orderId}`}
+        >
+          <div className="space-y-4 text-center">
+            <div className={`text-3xl font-bold tabular-nums ${qrSecondsLeft <= 60 ? "text-red-600" : "text-blue-700"}`}>
+              {String(Math.floor(qrSecondsLeft / 60)).padStart(2, "0")}:{String(qrSecondsLeft % 60).padStart(2, "0")}
+            </div>
+            <p className="text-xs text-muted-foreground">QR válido por 7 minutos · No use Yape personal</p>
+
+            <div className="mx-auto w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+              <div className="text-center">
+                <p className="text-xs text-gray-500 font-mono break-all px-2">{qrData.qrToken.slice(0, 16)}…</p>
+                <p className="text-xs text-gray-400 mt-1">QR Token</p>
+              </div>
+            </div>
+
+            <div className="rounded-md bg-blue-50 p-3">
+              <p className="text-sm text-blue-700 font-semibold">Total a cobrar</p>
+              <CashAmount amount={qrData.amount} className="text-2xl font-bold text-blue-900" />
+            </div>
+
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={() => { setQrData(null); if (qrTimerRef.current) clearInterval(qrTimerRef.current); }}
+            >
+              Cancelar QR
+            </Button>
+          </div>
+        </Modal>
+      )}
     </Container>
   );
 }

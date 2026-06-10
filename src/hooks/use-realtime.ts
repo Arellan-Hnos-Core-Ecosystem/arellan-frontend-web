@@ -77,6 +77,27 @@ export function useRealtime() {
       }
     })
 
+    socket.on("qa:inspection_requested", (data: {
+      orderId: string
+      orderNumber: string
+      mechanicName: string
+      role: string
+      odometerOut: number
+      technicalNotes: string
+    }) => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      if (data.orderId) {
+        queryClient.invalidateQueries({ queryKey: ["orders", data.orderId] })
+      }
+      addToast({
+        type: "info",
+        title: `OT #${data.orderNumber} lista para inspeccion QA`,
+        message: `${data.mechanicName} envio la orden a revision del Jefe de Taller. Odometro de salida: ${data.odometerOut} km.`,
+        duration: 8000,
+      })
+    })
+
     socket.on("anomaly:detected", (data: {
       type: string
       description: string

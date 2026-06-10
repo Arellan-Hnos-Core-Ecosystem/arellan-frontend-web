@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { io } from "socket.io-client";
+import { api } from "@/lib/api";
 import { useUIStore } from "@/stores/ui";
 import { useAuthStore } from "@/stores/auth";
 import {
@@ -126,6 +127,29 @@ export function useAddOrderItem() {
     },
     onError: (error: Error) => {
       addToast({ type: "error", title: "Error", message: error.message });
+    },
+  });
+}
+
+export function useSendQuote() {
+  const queryClient = useQueryClient();
+  const addToast = useUIStore((s) => s.addToast);
+
+  return useMutation({
+    mutationFn: ({ orderId, laborCost, partsCost, validDays }: {
+      orderId: string;
+      laborCost: number;
+      partsCost: number;
+      validDays?: number;
+    }) =>
+      api.post(`/orders/${orderId}/quote`, { laborCost, partsCost, validDays }),
+    onSuccess: (_, { orderId }) => {
+      queryClient.invalidateQueries({ queryKey: ["orders", orderId] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      addToast({ type: "success", title: "Cotización enviada", message: "La cotización fue enviada al cliente exitosamente" });
+    },
+    onError: (error: Error) => {
+      addToast({ type: "error", title: "Error al enviar cotización", message: error.message });
     },
   });
 }

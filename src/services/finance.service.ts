@@ -82,10 +82,11 @@ export async function openCashbox(payload: {
  */
 export async function closeCashbox(payload: {
   finalAmount: number
+  justificationText?: string
 }): Promise<CashboxSession> {
   const { data } = await api.post<CashboxSession>(
     "/finance/cashbox/close",
-    payload,
+    { actualCash: payload.finalAmount, justificationText: payload.justificationText },
   )
   return data
 }

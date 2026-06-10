@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUIStore } from "@/stores/ui";
+import { useRealtime } from "./useRealtime";
 import {
   getItems,
   getCriticalItems,
@@ -52,6 +53,15 @@ export function useAddMovement() {
     },
     onError: (error: Error) => {
       addToast({ type: "error", title: "Error", message: error.message });
+    },
+  });
+}
+
+export function useInventoryRealtime() {
+  const queryClient = useQueryClient();
+  useRealtime({
+    "inventory:low_stock": () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
     },
   });
 }
