@@ -89,7 +89,7 @@ export default function PersonnelPage() {
     {
       key: "name",
       header: "Nombre",
-      render: (person: { name: string; email: string }) => (
+      accessor: (person: { name: string; email: string }) => (
         <div>
           <span className="font-medium">{person.name}</span>
           <p className="text-xs text-muted-foreground">{person.email}</p>
@@ -99,7 +99,7 @@ export default function PersonnelPage() {
     {
       key: "role",
       header: "Rol",
-      render: (person: { role: UserRole }) => (
+      accessor: (person: { role: UserRole }) => (
         <Badge variant="brand">
           {roleLabels[person.role] ?? person.role}
         </Badge>
@@ -108,7 +108,7 @@ export default function PersonnelPage() {
     {
       key: "status",
       header: "Estado",
-      render: (person: { status: AccountStatus }) => (
+      accessor: (person: { status: AccountStatus }) => (
         <Badge variant={statusVariants[person.status]}>
           {statusLabels[person.status]}
         </Badge>
@@ -117,7 +117,7 @@ export default function PersonnelPage() {
     {
       key: "createdAt",
       header: "Registro",
-      render: (person: { createdAt: string }) =>
+      accessor: (person: { createdAt: string }) =>
         new Date(person.createdAt).toLocaleDateString("es-PE", {
           day: "2-digit",
           month: "2-digit",
@@ -145,13 +145,13 @@ export default function PersonnelPage() {
               <Input
                 placeholder="Buscar por nombre o email..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && handleSearch()}
               />
             </div>
             <Select
               value={filters.role ?? "ALL"}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                 handleRoleFilter(e.target.value as UserRole | "ALL")
               }
               options={[

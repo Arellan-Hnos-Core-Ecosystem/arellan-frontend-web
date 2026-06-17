@@ -20,7 +20,7 @@ import {
   Tabs,
 } from "@arellan-hnos-core-ecosystem/ui";
 import { useOrders, useUpdateOrderStatus } from "@/hooks/use-orders";
-import type { OrderFilters, OrderStatus } from "@/types";
+import type { Order, OrderFilters, OrderStatus } from "@/types";
 
 const statusOptions: { value: OrderStatus | "ALL"; label: string }[] = [
   { value: "ALL", label: "Todos los estados" },
@@ -71,52 +71,64 @@ export default function OrdersPage() {
 
   const columns = [
     {
-      key: "orderNumber",
+      key: "number",
       header: "N° OT",
-      render: (order: { orderNumber: number }) => (
-        <span className="font-mono font-medium">#{order.orderNumber}</span>
+      // El modelo Prisma expone "number" (secuencial OT-AAAA-NNN), no "orderNumber"
+      accessor: (order: Order) => (
+        <span className="font-mono font-medium">{order.number ?? "—"}</span>
       ),
     },
     {
       key: "client",
       header: "Cliente",
-      render: (order: { client: { firstName: string; lastName: string } }) =>
-        `${order.client.firstName} ${order.client.lastName}`,
+      accessor: (order: Order) =>
+        order.client?.firstName
+          ? `${order.client.firstName} ${order.client.lastName ?? ""}`.trim()
+          : "Cliente no registrado",
     },
     {
       key: "vehicle",
       header: "Vehiculo",
-      render: (order: { vehicle: { brand: string; model: string; plate: string } }) =>
-        `${order.vehicle.brand} ${order.vehicle.model} (${order.vehicle.plate})`,
+      accessor: (order: Order) =>
+        order.vehicle?.plate
+          ? `${order.vehicle.brand ?? ""} ${order.vehicle.model ?? ""} (${order.vehicle.plate})`.trim()
+          : "Sin vehículo",
     },
     {
       key: "status",
       header: "Estado",
-      render: (order: { status: OrderStatus }) => (
+      accessor: (order: Order) => (
         <OrderStatusBadge status={order.status} />
       ),
     },
     {
-      key: "createdAt",
+      key: "receivedAt",
       header: "Fecha",
-      render: (order: { createdAt: string }) =>
-        new Date(order.createdAt).toLocaleDateString("es-PE", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        }),
+      // El modelo Prisma expone "receivedAt" (no "createdAt") como fecha de ingreso
+      accessor: (order: Order) => {
+        const raw = order.receivedAt ?? order.createdAt;
+        return raw
+          ? new Date(raw).toLocaleDateString("es-PE", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "—";
+      },
     },
     {
       key: "actions",
       header: "",
-      render: (order: { id: string; status: OrderStatus }) => (
+      accessor: (order: Order) => (
         <div className="flex items-center justify-end gap-2">
           {order.status === "IN_REVIEW" && (
             <Button
               size="sm"
               data-testid={`approve-qa-${order.id}`}
               disabled={updateStatus.isPending}
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();
                 handleApproveQa(order.id);
               }}
@@ -127,7 +139,7 @@ export default function OrdersPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               router.push(`/orders/${order.id}`);
             }}
@@ -170,13 +182,13 @@ export default function OrdersPage() {
               <Input
                 placeholder="Buscar por cliente, placa o N° OT..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && handleSearch()}
               />
             </div>
             <Select
               value={filters.status ?? "ALL"}
-              onChange={(e) => handleStatusFilter(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleStatusFilter(e.target.value)}
               options={statusOptions}
             />
             <Button variant="outline" onClick={handleSearch}>

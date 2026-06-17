@@ -112,6 +112,7 @@ export default function LoginPage() {
           <Alert variant="error" className="mb-4">
             <p>{error}</p>
             <button
+              type="button"
               onClick={clearError}
               className="ml-2 font-bold"
               aria-label="Cerrar alerta"

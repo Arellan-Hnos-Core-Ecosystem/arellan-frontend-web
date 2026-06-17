@@ -71,8 +71,22 @@ export function useCreatePart() {
   const addToast = useUIStore((s) => s.addToast);
 
   return useMutation({
-    mutationFn: (payload: Omit<Part, "id" | "createdAt" | "updatedAt">) =>
-      createItem(payload as Record<string, unknown>),
+    mutationFn: (data: Omit<Part, "id" | "createdAt" | "updatedAt">) => {
+      // Mapeo inverso mandatorio DENTRO del mutationFn: el CreateItemDto del
+      // backend (whitelist estricta) exige sku/category/stock/minStock/unitPrice;
+      // las claves esteticas de la UI (code/currentStock/salePrice) rebotan 400.
+      // Atrapado aqui, cualquier reintento post-refresh de token re-emite el
+      // payload ya mapeado.
+      const backendPayload = {
+        sku: data.code,
+        name: data.name,
+        category: data.category ?? "",
+        stock: Number(data.currentStock ?? 0),
+        minStock: Number(data.minStock ?? 1),
+        unitPrice: Number(data.salePrice ?? 0),
+      };
+      return createItem(backendPayload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       addToast({ type: "success", title: "Repuesto creado", message: "El repuesto se ha creado exitosamente" });

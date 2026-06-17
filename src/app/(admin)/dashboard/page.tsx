@@ -17,6 +17,40 @@ import { usePendingExpenses } from "@/hooks/use-finance";
 import { useAuditLogs } from "@/hooks/use-audit";
 import { CashAmount } from "@arellan-hnos-core-ecosystem/ui";
 
+// Diccionario de traduccion: enums crudos del audit log -> texto legible
+const ACTION_TRANSLATIONS: Record<string, string> = {
+  CRITICAL_STOCK: "Alerta de Stock Crítico",
+  SECURITY: "Control de Acceso",
+  CASHBOX_OPENED: "Apertura de Caja",
+  CASHBOX_CLOSED: "Cierre de Caja",
+  CASHBOX_BLOCKED_MAJOR_DISCREPANCY: "Caja Bloqueada por Descuadre",
+  AUTH_LOGIN: "Inicio de Sesión",
+  LOGIN: "Inicio de Sesión",
+  LOGOUT: "Cierre de Sesión",
+  ORDER_CREATED: "Nueva Orden de Trabajo",
+  ORDER_STATUS_CHANGED: "Cambio de Estado de OT",
+  VEHICLE_DELIVERED: "Entrega de Vehículo",
+  EXPENSE_APPROVED: "Gasto Aprobado",
+  EXPENSE_DISBURSED: "Gasto Desembolsado",
+  CREATE: "Creación",
+  UPDATE: "Actualización",
+  DELETE: "Eliminación",
+};
+
+const MODULE_TRANSLATIONS: Record<string, string> = {
+  inventory: "Inventario",
+  auth: "Seguridad",
+  cashbox: "Finanzas",
+  orders: "Operaciones",
+  InventoryItem: "Inventario",
+  Account: "Seguridad",
+  CashboxSession: "Finanzas",
+  WorkOrder: "Operaciones",
+  ExpenseAuthorization: "Finanzas",
+  Vehicle: "Vehículos",
+  Client: "Clientes",
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const { data: stats, isLoading, error } = useDashboardStats();
@@ -152,6 +186,7 @@ export default function DashboardPage() {
                   No hay caja abierta. Dirijase a Finanzas para abrir caja.
                 </p>
                 <button
+                  type="button"
                   onClick={() => router.push("/finance")}
                   className="mt-2 text-sm font-medium text-primary hover:underline"
                 >
@@ -194,7 +229,7 @@ export default function DashboardPage() {
                       <p className="text-sm font-medium">
                         {log.user?.name ?? "Sistema"}
                         <span className="ml-1 text-xs text-muted-foreground">
-                          {log.action} · {log.entity}
+                          {ACTION_TRANSLATIONS[log.action] || log.action} · {MODULE_TRANSLATIONS[log.entity] || log.entity}
                         </span>
                       </p>
                       <p className="text-xs text-muted-foreground">

@@ -594,7 +594,7 @@ export default function OrderDetailPage() {
             <Select
               id="nuevo-estado"
               value={selectedStatus}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                 setSelectedStatus(e.target.value as OrderStatus)
               }
               options={[

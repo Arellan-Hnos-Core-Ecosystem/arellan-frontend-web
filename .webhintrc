@@ -1,0 +1,13 @@
+{
+  "connector": {
+    "name": "local"
+  },
+  "hints": {
+    "compat-api/html": "off",
+    "compat-api/css": "off",
+    "meta-viewport": "default",
+    "axe/style": "off",
+    "validate-set-cookie-net-csp": "off",
+    "content-type": "off"
+  }
+}

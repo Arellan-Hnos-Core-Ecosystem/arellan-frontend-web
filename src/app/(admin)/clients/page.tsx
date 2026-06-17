@@ -41,7 +41,7 @@ export default function ClientsPage() {
     {
       key: "firstName",
       header: "Nombre",
-      render: (client: { firstName: string; lastName: string }) => (
+      accessor: (client: { firstName: string; lastName: string }) => (
         <span className="font-medium">
           {client.firstName} {client.lastName}
         </span>
@@ -50,25 +50,25 @@ export default function ClientsPage() {
     {
       key: "dni",
       header: "DNI",
-      render: (client: { dni: string }) => (
+      accessor: (client: { dni: string }) => (
         <span className="font-mono text-sm">{client.dni}</span>
       ),
     },
     {
       key: "phone",
       header: "Telefono",
-      render: (client: { phone: string }) => client.phone,
+      accessor: (client: { phone: string }) => client.phone,
     },
     {
       key: "email",
       header: "Email",
-      render: (client: { email: string | null }) =>
+      accessor: (client: { email: string | null }) =>
         client.email ?? <span className="text-muted-foreground">-</span>,
     },
     {
       key: "vehicles",
       header: "Vehiculos",
-      render: (client: { vehicles: unknown[] }) => (
+      accessor: (client: { vehicles: unknown[] }) => (
         <Badge variant="brand">{client.vehicles?.length ?? 0}</Badge>
       ),
     },
@@ -93,8 +93,8 @@ export default function ClientsPage() {
               <Input
                 placeholder="Buscar por nombre o DNI..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && handleSearch()}
               />
             </div>
             <Button variant="outline" onClick={handleSearch}>

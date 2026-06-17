@@ -296,7 +296,7 @@ export default function NewOrderPage() {
               <Input
                 placeholder="Buscar por nombre, DNI o teléfono..."
                 value={searchClient}
-                onChange={(e) => setSearchClient(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchClient(e.target.value)}
                 className="flex-1"
               />
               <Button variant="outline" onClick={() => setShowNewClient(true)}>
@@ -346,18 +346,18 @@ export default function NewOrderPage() {
                 <h3 className="font-semibold text-sm">Nuevo Cliente</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <FormField label="Nombre" required>
-                    <Input value={newClientName} onChange={(e) => setNewClientName(e.target.value)} placeholder="Nombres" />
+                    <Input value={newClientName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewClientName(e.target.value)} placeholder="Nombres" />
                   </FormField>
                   <FormField label="Apellido" required>
-                    <Input value={newClientLast} onChange={(e) => setNewClientLast(e.target.value)} placeholder="Apellidos" />
+                    <Input value={newClientLast} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewClientLast(e.target.value)} placeholder="Apellidos" />
                   </FormField>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <FormField label="Teléfono">
-                    <Input value={newClientPhone} onChange={(e) => setNewClientPhone(e.target.value)} placeholder="987654321" />
+                    <Input value={newClientPhone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewClientPhone(e.target.value)} placeholder="987654321" />
                   </FormField>
                   <FormField label="DNI">
-                    <Input value={newClientDni} onChange={(e) => setNewClientDni(e.target.value)} placeholder="12345678" />
+                    <Input value={newClientDni} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewClientDni(e.target.value)} placeholder="12345678" />
                   </FormField>
                 </div>
                 <div className="flex gap-2 justify-end">
@@ -417,22 +417,22 @@ export default function NewOrderPage() {
               <div className="border rounded-lg p-4 space-y-3 mt-4">
                 <h3 className="font-semibold text-sm">Nuevo Vehículo</h3>
                 <FormField label="Placa" required>
-                  <Input value={newPlate} onChange={(e) => setNewPlate(e.target.value.toUpperCase())} placeholder="ABC-123" />
+                  <Input value={newPlate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPlate(e.target.value.toUpperCase())} placeholder="ABC-123" />
                 </FormField>
                 <div className="grid grid-cols-2 gap-3">
                   <FormField label="Marca" required>
-                    <Input value={newBrand} onChange={(e) => setNewBrand(e.target.value)} placeholder="Toyota" />
+                    <Input value={newBrand} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewBrand(e.target.value)} placeholder="Toyota" />
                   </FormField>
                   <FormField label="Modelo" required>
-                    <Input value={newModel} onChange={(e) => setNewModel(e.target.value)} placeholder="Corolla" />
+                    <Input value={newModel} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewModel(e.target.value)} placeholder="Corolla" />
                   </FormField>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <FormField label="Año" required>
-                    <Input value={newYear} onChange={(e) => setNewYear(e.target.value)} placeholder="2020" />
+                    <Input value={newYear} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewYear(e.target.value)} placeholder="2020" />
                   </FormField>
                   <FormField label="Color">
-                    <Input value={newColor} onChange={(e) => setNewColor(e.target.value)} placeholder="Blanco" />
+                    <Input value={newColor} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewColor(e.target.value)} placeholder="Blanco" />
                   </FormField>
                 </div>
                 <div className="flex gap-2 justify-end">
@@ -469,24 +469,24 @@ export default function NewOrderPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <FormField label="Tipo de orden">
-                <Select value={orderType} onChange={(e) => setOrderType(e.target.value)} options={ORDER_TYPES} />
+                <Select value={orderType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setOrderType(e.target.value)} options={ORDER_TYPES} />
               </FormField>
               <FormField label="Prioridad">
-                <Select value={priority} onChange={(e) => setPriority(e.target.value)} options={PRIORITIES} />
+                <Select value={priority} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setPriority(e.target.value)} options={PRIORITIES} />
               </FormField>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <FormField label="Kilometraje">
-                <Input value={odometer} onChange={(e) => setOdometer(e.target.value)} placeholder="45000" type="number" />
+                <Input value={odometer} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOdometer(e.target.value)} placeholder="45000" type="number" />
               </FormField>
               <FormField label="Nivel de combustible">
-                <Select value={fuelLevel} onChange={(e) => setFuelLevel(e.target.value)} options={FUEL_LEVELS} />
+                <Select value={fuelLevel} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFuelLevel(e.target.value)} options={FUEL_LEVELS} />
               </FormField>
             </div>
 
             <FormField label="Mecánico asignado" required>
-              <Select value={mechanicId} onChange={(e) => setMechanicId(e.target.value)} options={[
+              <Select value={mechanicId} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setMechanicId(e.target.value)} options={[
                 { value: "", label: "Seleccionar mecánico..." },
                 ...mechanics.map((m: any) => ({ value: m.id, label: `${m.name} (${m.role})` })),
               ]} />
@@ -522,7 +522,7 @@ export default function NewOrderPage() {
               <Input
                 placeholder="Buscar repuesto por nombre..."
                 value={partsSearch}
-                onChange={(e) => setPartsSearch(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPartsSearch(e.target.value)}
                 className="flex-1"
               />
             </div>

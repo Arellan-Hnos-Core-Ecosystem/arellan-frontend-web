@@ -100,14 +100,14 @@ export default function InventoryPage() {
     {
       key: "code",
       header: "Codigo",
-      render: (part: { code: string }) => (
+      accessor: (part: { code: string }) => (
         <span className="font-mono text-xs font-medium">{part.code}</span>
       ),
     },
     {
       key: "name",
       header: "Repuesto",
-      render: (part: { name: string; brand: string | null }) => (
+      accessor: (part: { name: string; brand: string | null }) => (
         <div>
           <span className="font-medium">{part.name}</span>
           {part.brand && (
@@ -121,7 +121,7 @@ export default function InventoryPage() {
     {
       key: "currentStock",
       header: "Stock",
-      render: (part: { currentStock: number; minStock: number }) => {
+      accessor: (part: { currentStock: number; minStock: number }) => {
         const isLow = part.currentStock <= part.minStock;
         return (
           <Badge variant={isLow ? "error" : "success"}>
@@ -136,21 +136,21 @@ export default function InventoryPage() {
     {
       key: "costPrice",
       header: "Costo",
-      render: (part: { costPrice: number }) => (
+      accessor: (part: { costPrice: number }) => (
         <span>S/ {Number(part.costPrice || 0).toFixed(2)}</span>
       ),
     },
     {
       key: "salePrice",
       header: "Venta",
-      render: (part: { salePrice: number }) => (
+      accessor: (part: { salePrice: number }) => (
         <span className="font-medium">S/ {Number(part.salePrice || 0).toFixed(2)}</span>
       ),
     },
     {
       key: "category",
       header: "Categoria",
-      render: (part: { category: string | null }) => (
+      accessor: (part: { category: string | null }) => (
         <span className="text-xs">
           {part.category ?? "Sin categoria"}
         </span>
@@ -180,8 +180,8 @@ export default function InventoryPage() {
               <Input
                 placeholder="Buscar por codigo o nombre..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && handleSearch()}
               />
             </div>
             <div className="flex gap-2">

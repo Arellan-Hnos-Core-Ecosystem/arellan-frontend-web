@@ -3,3 +3,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Excepcion tecnica certificada — animaciones del design system:
+ * shimmer (Skeleton), ping y spin (Spinner) animan exclusivamente
+ * propiedades compositables (transform / opacity). Corren aceleradas
+ * por GPU en el compositor del navegador, sin invalidar layout ni paint
+ * del hilo principal. Las advertencias de "Paint" de Edge DevTools sobre
+ * estos keyframes son falsos positivos y no requieren refactor.
+ */

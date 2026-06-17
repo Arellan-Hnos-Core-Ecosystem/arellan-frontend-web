@@ -32,6 +32,19 @@ import { useUIStore } from "@/stores/ui";
 
 const QR_TTL_SECONDS = 7 * 60;
 
+// Traduccion de ExpenseCategory (enum Prisma) para las tablas de Transacciones
+// del Dia y Gastos Pendientes — fallback al valor crudo si aparece un enum nuevo.
+const CATEGORY_TRANSLATIONS: Record<string, string> = {
+  PARTS: "Repuestos",
+  SUPPLIES: "Suministros",
+  TOOLS: "Herramientas",
+  SERVICES: "Servicios",
+  UTILITIES: "Servicios Públicos",
+  SALARY: "Planilla",
+  MAINTENANCE: "Mantenimiento",
+  OTHER: "Otros",
+};
+
 const closeCashboxSchema = z.object({
   actualCash: z.number({ invalid_type_error: "Ingrese un monto válido" }).min(0),
   justificationText: z.string().optional(),
@@ -43,6 +56,10 @@ const closeCashboxSchema = z.object({
 export default function FinancePage() {
   const router = useRouter();
   const { data: cashbox, isLoading, error } = useTodayCashbox();
+  // El backend responde {open:false,message:"..."} (objeto truthy) cuando NO
+  // hay sesion OPEN — sin este flag, `cashbox ? (...)` renderizaba la tarjeta
+  // "Abierta" con campos undefined (Abierta por: N/A, Abierta desde: —).
+  const isCashboxOpen = Boolean((cashbox as { open?: boolean } | null | undefined)?.open);
   const { data: pendingExpenses } = usePendingExpenses();
   const openCashbox = useOpenCashbox();
   const closeCashbox = useCloseCashbox();
@@ -202,7 +219,7 @@ export default function FinancePage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Estado de Caja</h2>
-              {cashbox ? (
+              {cashbox && isCashboxOpen ? (
                 <Badge variant="success">Abierta</Badge>
               ) : (
                 <Badge variant="error">Cerrada</Badge>
@@ -210,13 +227,13 @@ export default function FinancePage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {cashbox ? (
+            {cashbox && isCashboxOpen ? (
               <>
                 <div className="flex items-center justify-between rounded-md bg-muted p-3">
                   <span className="text-sm text-muted-foreground">
                     Monto Inicial
                   </span>
-                  <CashAmount amount={cashbox.initialAmount} />
+                  <CashAmount amount={Number(cashbox.initialAmount ?? 0)} />
                 </div>
                 <div className="flex items-center justify-between rounded-md bg-muted p-3">
                   <span className="text-sm text-muted-foreground">
@@ -231,7 +248,7 @@ export default function FinancePage() {
                     Abierta por
                   </span>
                   <span className="font-medium">
-                    {cashbox.openedBy?.name ?? "N/A"}
+                    {(cashbox as { openedByName?: string }).openedByName ?? cashbox.openedBy?.name ?? "N/A"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between rounded-md bg-muted p-3">
@@ -239,12 +256,14 @@ export default function FinancePage() {
                     Abierta desde
                   </span>
                   <span className="font-medium">
-                    {new Date(cashbox.openedAt).toLocaleString("es-PE", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {cashbox.openedAt
+                      ? new Date(cashbox.openedAt).toLocaleString("es-PE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "—"}
                   </span>
                 </div>
                 <Button
@@ -296,7 +315,7 @@ export default function FinancePage() {
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {expense.requestedBy?.name ?? "N/A"} ·{" "}
-                          {expense.category}
+                          {CATEGORY_TRANSLATIONS[expense.category] ?? expense.category}
                         </p>
                       </div>
                       <CashAmount
@@ -350,7 +369,7 @@ export default function FinancePage() {
                   {expenses.data.map((expense) => (
                     <tr key={expense.id} className="border-b last:border-0">
                       <td className="py-2">{expense.description}</td>
-                      <td className="py-2">{expense.category}</td>
+                      <td className="py-2">{CATEGORY_TRANSLATIONS[expense.category] ?? expense.category}</td>
                       <td className="py-2"><CashAmount amount={expense.amount} /></td>
                       <td className="py-2">
                         <Badge variant={expense.status === "APPROVED" ? "success" : expense.status === "REJECTED" ? "error" : "warning"}>
@@ -377,6 +396,7 @@ export default function FinancePage() {
           {(["caja", "comisiones", "dashboard"] as const).map((tab) => (
             <button
               key={tab}
+              type="button"
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab
@@ -397,7 +417,7 @@ export default function FinancePage() {
                   <h2 className="text-lg font-semibold">Comisiones</h2>
                   <p className="text-sm text-muted-foreground">Comisiones por importaciones y servicios</p>
                 </div>
-                <Select value={commStatusFilter} onChange={(e) => { setCommStatusFilter(e.target.value); loadCommissions(e.target.value || undefined); }} options={[
+                <Select value={commStatusFilter} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setCommStatusFilter(e.target.value); loadCommissions(e.target.value || undefined); }} options={[
                   { value: "", label: "Todos los estados" },
                   { value: "PENDING", label: "Pendiente" },
                   { value: "APPROVED", label: "Aprobado" },
@@ -517,7 +537,7 @@ export default function FinancePage() {
               type="number"
               placeholder="0.00"
               value={initialAmount}
-              onChange={(e) => setInitialAmount(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInitialAmount(e.target.value)}
               min="0"
               step="0.01"
             />
@@ -557,7 +577,7 @@ export default function FinancePage() {
               type="number"
               placeholder="0.00"
               value={finalAmount}
-              onChange={(e) => { setFinalAmount(e.target.value); setCloseFormError(null); }}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFinalAmount(e.target.value); setCloseFormError(null); }}
               min="0"
               step="0.01"
             />

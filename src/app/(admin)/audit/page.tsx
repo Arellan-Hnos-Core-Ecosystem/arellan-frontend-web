@@ -70,7 +70,7 @@ export default function AuditPage() {
     {
       key: "action",
       header: "Accion",
-      render: (log: { action: AuditAction }) => (
+      accessor: (log: { action: AuditAction }) => (
         <Badge
           variant={
             log.action === "DELETE"
@@ -91,7 +91,7 @@ export default function AuditPage() {
     {
       key: "entity",
       header: "Entidad",
-      render: (log: { entity: AuditEntity; entityId: string }) => (
+      accessor: (log: { entity: AuditEntity; entityId: string }) => (
         <div>
           <span className="text-sm">
             {entityLabels[log.entity] ?? log.entity}
@@ -105,14 +105,14 @@ export default function AuditPage() {
     {
       key: "user",
       header: "Usuario",
-      render: (log: { user: { name: string } }) => (
+      accessor: (log: { user: { name: string } }) => (
         <span className="text-sm">{log.user?.name ?? "Sistema"}</span>
       ),
     },
     {
       key: "changes",
       header: "Cambios",
-      render: (log: { changes: Record<string, unknown> | null }) => {
+      accessor: (log: { changes: Record<string, unknown> | null }) => {
         if (!log.changes) return <span className="text-muted-foreground">-</span>;
         const keys = Object.keys(log.changes);
         return (
@@ -125,7 +125,7 @@ export default function AuditPage() {
     {
       key: "createdAt",
       header: "Fecha",
-      render: (log: { createdAt: string }) =>
+      accessor: (log: { createdAt: string }) =>
         new Date(log.createdAt).toLocaleString("es-PE", {
           day: "2-digit",
           month: "2-digit",
@@ -154,12 +154,12 @@ export default function AuditPage() {
               <Input
                 placeholder="Buscar por usuario..."
                 value={searchUser}
-                onChange={(e) => setSearchUser(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchUser(e.target.value)}
               />
             </div>
             <Select
               value={filters.action ?? "ALL"}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                 handleActionFilter(e.target.value as AuditAction | "ALL")
               }
               options={[
@@ -172,7 +172,7 @@ export default function AuditPage() {
             />
             <Select
               value={filters.entity ?? "ALL"}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                 handleEntityFilter(e.target.value as AuditEntity | "ALL")
               }
               options={[

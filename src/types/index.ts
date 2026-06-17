@@ -71,7 +71,10 @@ export interface Vehicle {
 
 export interface Order {
   id: string;
-  orderNumber: number;
+  // Prisma emite "number" (secuencial OT-AAAA-NNN); orderNumber queda como
+  // legado de los eventos websocket
+  number: string;
+  orderNumber?: number;
   status: OrderStatus;
   description: string;
   observations: string | null;
@@ -81,7 +84,9 @@ export interface Order {
   vehicle: Vehicle;
   mechanicId: string | null;
   mechanic: Account | null;
-  createdAt: string;
+  // Prisma emite "receivedAt" como fecha de ingreso de la OT
+  receivedAt: string;
+  createdAt?: string;
   updatedAt: string;
   completedAt: string | null;
   parts: OrderPart[];

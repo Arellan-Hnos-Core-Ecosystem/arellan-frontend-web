@@ -37,5 +37,14 @@
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.2",
     "vitest": "^2.1.2"
-  }
+  },
+  "overrides": {
+    "@arellan-hnos-core-ecosystem/eslint-config": "file:../arellan-design-system/packages/eslint-config",
+    "@arellan-hnos-core-ecosystem/typescript-config": "file:../arellan-design-system/packages/typescript-config"
+  },
+  "browserslist": [
+    "defaults",
+    "not ie 11",
+    "not dead"
+  ]
 }

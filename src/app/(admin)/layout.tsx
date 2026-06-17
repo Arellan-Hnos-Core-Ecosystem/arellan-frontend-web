@@ -147,8 +147,11 @@ export default function AdminLayout({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r bg-card transition-transform duration-300 lg:relative lg:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r bg-card transition-transform duration-300",
+          // En desktop el estado tambien manda: abierto ocupa layout (relative),
+          // cerrado se desliza fuera — antes lg:translate-x-0 forzaba el sidebar
+          // siempre visible y el boton hamburguesa parecia muerto en pantallas lg+
+          sidebarOpen ? "translate-x-0 lg:relative" : "-translate-x-full"
         )}
       >
         <div className="flex h-16 items-center gap-3 border-b px-6">
