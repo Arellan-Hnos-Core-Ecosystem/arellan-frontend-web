@@ -17,6 +17,24 @@ import { usePendingExpenses, useApproveExpense } from "@/hooks/use-finance";
 import { useApprovalSocket } from "@/hooks/use-approval-socket";
 import { useState } from "react";
 
+const CATEGORY_TRANSLATIONS: Record<string, string> = {
+  PARTS: "Repuestos",
+  SUPPLIES: "Suministros",
+  TOOLS: "Herramientas",
+  SERVICES: "Servicios",
+  UTILITIES: "Servicios Basicos",
+  SALARY: "Planilla",
+  MAINTENANCE: "Mantenimiento",
+  OTHER: "Otros",
+};
+
+const STATUS_TRANSLATIONS: Record<string, string> = {
+  PENDING_APPROVAL: "Pendiente",
+  APPROVED: "Aprobado",
+  REJECTED: "Rechazado",
+  DISBURSED: "Desembolsado",
+};
+
 export default function ApprovalsPage() {
   const { data: pendingExpenses, isLoading, error } = usePendingExpenses();
   const approveExpense = useApproveExpense();
@@ -91,7 +109,7 @@ export default function ApprovalsPage() {
                         {expense.description}
                       </h3>
                       <Badge variant="brand">
-                        {expense.category}
+                        {CATEGORY_TRANSLATIONS[expense.category] || expense.category}
                       </Badge>
                     </div>
                     <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">

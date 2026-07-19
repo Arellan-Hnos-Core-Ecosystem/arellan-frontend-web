@@ -57,12 +57,12 @@ export async function createOrder(
 export async function updateOrderStatus(
   id: string,
   status: OrderStatus,
-  comment?: string,
+  _comment?: string,
 ): Promise<Order> {
-  const { data } = await api.patch<Order>(`/orders/${id}/status`, {
-    status,
-    comment,
-  })
+  // FUN-14: el backend expone POST /orders/:id/status y su DTO sólo admite
+  // `status`; el ValidationPipe global (forbidNonWhitelisted) rechazaba
+  // `comment` con 400. No hay endpoint para adjuntar comentario al cambio.
+  const { data } = await api.post<Order>(`/orders/${id}/status`, { status })
   return data
 }
 
@@ -72,11 +72,11 @@ export async function updateOrderStatus(
  */
 export async function cancelOrder(
   id: string,
-  reason: string,
+  _reason?: string,
 ): Promise<Order> {
-  const { data } = await api.post<Order>(`/orders/${id}/cancel`, {
-    reason,
-  })
+  // FUN-14: la cancelación es DELETE /orders/:id (soft delete → CANCELLED).
+  // No existía POST /orders/:id/cancel (devolvía 404).
+  const { data } = await api.delete<Order>(`/orders/${id}`)
   return data
 }
 
@@ -88,9 +88,12 @@ export async function addOrderItem(
   orderId: string,
   payload: { partId: string; quantity: number; unitPrice: number },
 ): Promise<OrderPart> {
+  // FUN-14: el backend expone POST /orders/:id/parts con
+  // { items: [{ itemId, quantity }] } (no existía /orders/:id/items). El precio
+  // unitario lo fija el backend desde el inventario, por lo que no se envía.
   const { data } = await api.post<OrderPart>(
-    `/orders/${orderId}/items`,
-    payload,
+    `/orders/${orderId}/parts`,
+    { items: [{ itemId: payload.partId, quantity: payload.quantity }] },
   )
   return data
 }
@@ -102,10 +105,20 @@ export async function addOrderItem(
 export async function getOrderTimeline(
   orderId: string,
 ): Promise<OrderTimelineEntry[]> {
-  const { data } = await api.get<OrderTimelineEntry[]>(
-    `/orders/${orderId}/timeline`,
-  )
-  return data
+  // FUN-14: no existe GET /orders/:id/timeline. El historial vive en el detalle
+  // (statusHistory) de GET /orders/:id; se deriva aquí.
+  const { data } = await api.get<{
+    statusHistory?: Array<{ id: string; status: OrderStatus; changedBy?: string; timestamp?: string }>
+  }>(`/orders/${orderId}`)
+  const history = Array.isArray(data?.statusHistory) ? data.statusHistory : []
+  return history.map((h) => ({
+    id: h.id,
+    orderId,
+    status: h.status,
+    comment: null,
+    changedById: h.changedBy ?? "",
+    createdAt: h.timestamp ?? new Date().toISOString(),
+  }))
 }
 
 /**
