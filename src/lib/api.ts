@@ -10,19 +10,19 @@ export const api = axios.create({
 
 // Avoid circular dep: auth store calls configureApiAuth after it is created.
 // api.ts never imports from stores/auth.ts.
+// SEC-04: ya no existe getRefreshToken — el refresh token vive en una cookie
+// HttpOnly y solo lo maneja el BFF (/api/auth/refresh). El interceptor 401
+// llama al BFF (mismo origen) y recibe únicamente el access token nuevo.
 let _getAccessToken: () => string | null = () => null;
-let _getRefreshToken: () => string | null = () => null;
-let _onTokenRefreshed: (access: string, refresh: string) => void = () => {};
+let _onTokenRefreshed: (access: string) => void = () => {};
 let _onUnauthorized: () => void = () => {};
 
 export function configureApiAuth(opts: {
   getAccessToken: () => string | null;
-  getRefreshToken: () => string | null;
-  onTokenRefreshed: (access: string, refresh: string) => void;
+  onTokenRefreshed: (access: string) => void;
   onUnauthorized: () => void;
 }): void {
   _getAccessToken = opts.getAccessToken;
-  _getRefreshToken = opts.getRefreshToken;
   _onTokenRefreshed = opts.onTokenRefreshed;
   _onUnauthorized = opts.onUnauthorized;
 }
@@ -77,16 +77,16 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = _getRefreshToken();
-        if (!refreshToken) throw new Error("No refresh token");
+        // BFF same-origin: la cookie HttpOnly arellan-refresh viaja sola.
+        const refreshRes = await fetch("/api/auth/refresh", {
+          method: "POST",
+          credentials: "same-origin",
+        });
+        if (!refreshRes.ok) throw new Error("Sesion expirada");
+        const data = (await refreshRes.json()) as { accessToken?: string };
+        if (!data.accessToken) throw new Error("Sesion expirada");
 
-        const { data } = await axios.post<{ accessToken: string; refreshToken: string }>(
-          `${BASE_URL}/auth/refresh`,
-          { refreshToken },
-          { timeout: 15000 },
-        );
-
-        _onTokenRefreshed(data.accessToken, data.refreshToken);
+        _onTokenRefreshed(data.accessToken);
 
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;

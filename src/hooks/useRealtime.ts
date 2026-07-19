@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react"
 import { io, Socket } from "socket.io-client"
+import { useAuthStore } from "@/stores/auth"
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001"
 
@@ -26,9 +27,11 @@ export function useRealtime(
 ) {
   const socketRef = useRef<Socket | null>(null)
 
+  // SEC-04: el token ya no vive en localStorage; se toma de la memoria del
+  // store (misma fuente que el interceptor Authorization).
   const getToken = useCallback(() => {
     if (typeof window === "undefined") return null
-    return localStorage.getItem("accessToken")
+    return useAuthStore.getState().accessToken
   }, [])
 
   useEffect(() => {

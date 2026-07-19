@@ -1,39 +1,65 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Account, AuthResponse, LoginRequest, MfaRequest } from "@/types";
-import { api, configureApiAuth } from "@/lib/api";
+import type { Account, LoginRequest, MfaRequest } from "@/types";
+import { configureApiAuth } from "@/lib/api";
+
+// SEC-04: NINGÚN token se persiste en localStorage. El access token vive solo
+// en memoria (este store, sin partialize); el refresh token vive solo en una
+// cookie HttpOnly gestionada por el BFF (/api/auth/*) — el JS nunca lo ve.
+// Un XSS ya no puede exfiltrar la sesión persistente: como máximo usa el
+// access token en memoria durante su TTL (15 min).
+// Al recargar la página, la sesión se reanuda vía POST /api/auth/refresh
+// (cookie HttpOnly → nuevo access token), no desde el almacenamiento.
+
+interface BffAuthResponse {
+  user?: Account;
+  accessToken?: string;
+  mfaPending?: boolean;
+  sessionToken?: string;
+  mfaEnrollmentRequired?: boolean;
+  message?: string;
+}
 
 interface AuthState {
   user: Account | null;
   accessToken: string | null;
-  refreshToken: string | null;
   mfaToken: string | null;
+  mfaEnrollmentRequired: boolean;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
 
   login: (data: LoginRequest) => Promise<void>;
   verifyMfa: (data: MfaRequest) => Promise<void>;
+  restoreSession: () => Promise<boolean>;
   logout: () => void;
-  setTokens: (accessToken: string, refreshToken: string) => void;
+  setAccessToken: (accessToken: string) => void;
   clearError: () => void;
 }
 
-function sanitizePersisted(raw: Partial<AuthState>) {
-  if (raw.accessToken && raw.isAuthenticated && raw.user) {
-    return {
-      accessToken: raw.accessToken,
-      refreshToken: raw.refreshToken ?? null,
-      user: raw.user,
-      isAuthenticated: true,
-    };
+// SEC-04 (invariantes testeables): lo único persistible es el usuario para
+// presentación. Cualquier token —presente o legacy— queda fuera.
+export function persistPartialize(state: AuthState): { user: Account | null } {
+  return { user: state.user };
+}
+
+export function persistMigrate(persisted: unknown): { user: Account | null } {
+  const prev = (persisted ?? {}) as Partial<AuthState>;
+  return { user: prev.user ?? null };
+}
+
+async function postJson(url: string, body: unknown): Promise<BffAuthResponse> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    credentials: "same-origin",
+  });
+  const data = (await res.json().catch(() => ({}))) as BffAuthResponse;
+  if (!res.ok) {
+    throw new Error(data.message ?? "Error de autenticacion");
   }
-  return {
-    accessToken: null as string | null,
-    refreshToken: null as string | null,
-    user: null as Account | null,
-    isAuthenticated: false,
-  };
+  return data;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -41,8 +67,8 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       mfaToken: null,
+      mfaEnrollmentRequired: false,
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -50,18 +76,18 @@ export const useAuthStore = create<AuthState>()(
       login: async (data: LoginRequest) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await api.post<AuthResponse>("/auth/login", data);
+          const response = await postJson("/api/auth/login", data);
 
-          if (response.data.mfaPending) {
-            set({ mfaToken: response.data.sessionToken ?? null, isLoading: false });
+          if (response.mfaPending) {
+            set({ mfaToken: response.sessionToken ?? null, isLoading: false });
             return;
           }
 
           set({
-            user: response.data.user,
-            accessToken: response.data.accessToken,
-            refreshToken: response.data.refreshToken,
-            isAuthenticated: true,
+            user: response.user ?? null,
+            accessToken: response.accessToken ?? null,
+            mfaEnrollmentRequired: response.mfaEnrollmentRequired === true,
+            isAuthenticated: !!response.accessToken,
             isLoading: false,
             error: null,
           });
@@ -75,17 +101,17 @@ export const useAuthStore = create<AuthState>()(
       verifyMfa: async (data: MfaRequest) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await api.post<AuthResponse>("/auth/mfa/verify", {
+          const response = await postJson("/api/auth/mfa", {
             token: data.code,
             sessionToken: get().mfaToken,
           });
 
           set({
-            user: response.data.user,
-            accessToken: response.data.accessToken,
-            refreshToken: response.data.refreshToken,
+            user: (response.user as Account) ?? null,
+            accessToken: response.accessToken ?? null,
             mfaToken: null,
-            isAuthenticated: true,
+            mfaEnrollmentRequired: false,
+            isAuthenticated: !!response.accessToken,
             isLoading: false,
             error: null,
           });
@@ -96,38 +122,56 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
+      // Reanuda la sesión tras una recarga: la cookie HttpOnly de refresh
+      // produce un access token nuevo. Devuelve false si no hay sesión.
+      restoreSession: async () => {
+        try {
+          const response = await postJson("/api/auth/refresh", {});
+          if (!response.accessToken) return false;
+          set({
+            accessToken: response.accessToken,
+            user: (response.user as Account) ?? get().user,
+            isAuthenticated: true,
+          });
+          return true;
+        } catch {
+          set({ accessToken: null, isAuthenticated: false });
+          return false;
+        }
+      },
+
       logout: () => {
         try {
-          api.post("/auth/logout").catch(() => {});
+          void fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
         } finally {
           set({
             user: null,
             accessToken: null,
-            refreshToken: null,
             mfaToken: null,
+            mfaEnrollmentRequired: false,
             isAuthenticated: false,
             error: null,
           });
         }
       },
 
-      setTokens: (accessToken: string, refreshToken: string) => {
-        set({ accessToken, refreshToken, isAuthenticated: true });
+      setAccessToken: (accessToken: string) => {
+        set({ accessToken, isAuthenticated: true });
       },
 
       clearError: () => set({ error: null }),
     }),
     {
       name: "arellan-auth",
-      partialize: (state) => ({
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
-      }),
+      // SEC-04: solo datos de presentación; jamás tokens.
+      partialize: persistPartialize,
+      // v2: purga los accessToken/refreshToken que la versión anterior dejó en
+      // localStorage de los navegadores existentes.
+      version: 2,
+      migrate: persistMigrate,
       merge: (persisted, current) => ({
         ...current,
-        ...sanitizePersisted(persisted as Partial<AuthState>),
+        user: ((persisted ?? {}) as Partial<AuthState>).user ?? null,
       }),
     }
   )
@@ -136,9 +180,8 @@ export const useAuthStore = create<AuthState>()(
 // Wire api auth callbacks — uni-directional: auth → api (no cycle)
 configureApiAuth({
   getAccessToken: () => useAuthStore.getState().accessToken,
-  getRefreshToken: () => useAuthStore.getState().refreshToken,
-  onTokenRefreshed: (access, refresh) => {
-    useAuthStore.getState().setTokens(access, refresh);
+  onTokenRefreshed: (access) => {
+    useAuthStore.getState().setAccessToken(access);
   },
   onUnauthorized: () => {
     useAuthStore.getState().logout();
